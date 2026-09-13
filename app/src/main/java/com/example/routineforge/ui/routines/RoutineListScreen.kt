@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -77,6 +78,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,6 +89,12 @@ import com.example.routineforge.data.StepType
 import com.example.routineforge.theme.BrandPrimary
 import com.example.routineforge.theme.BrandSecondary
 import com.example.routineforge.theme.BrandTertiary
+import com.example.routineforge.theme.DarkBg
+import com.example.routineforge.theme.NothingDottedDivider
+import com.example.routineforge.theme.NothingPillTag
+import com.example.routineforge.theme.NothingRed
+import com.example.routineforge.theme.NothingSectionHeader
+import com.example.routineforge.theme.NothingThemeTogglePill
 import com.example.routineforge.theme.RestColor
 import com.example.routineforge.theme.WorkColor
 
@@ -115,27 +123,42 @@ fun RoutineListScreen(
                             painter = painterResource(com.example.routineforge.R.drawable.app_brand_logo),
                             contentDescription = "RoutineForge Logo",
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(7.dp))
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = "RoutineForge",
-                                style = MaterialTheme.typography.titleLarge.copy(
+                                text = "ROUTINEFORGE",
+                                maxLines = 1,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp
+                                    fontSize = 15.sp,
+                                    letterSpacing = 0.5.sp
                                 )
                             )
                             Text(
-                                text = "Category Schedule & Timers",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "// PROTOCOL",
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp,
+                                    color = NothingRed
+                                )
                             )
                         }
                     }
                 },
                 actions = {
+                    // Nothing 1-Tap Theme Switcher
+                    NothingThemeTogglePill(
+                        currentMode = uiState.themeMode,
+                        onToggle = { viewModel.toggleThemeMode() }
+                    )
+
+                    Spacer(modifier = Modifier.width(2.dp))
+
                     // Calendar / Schedule Planner Button
                     IconButton(
                         onClick = onOpenCalendar
@@ -143,7 +166,7 @@ fun RoutineListScreen(
                         Icon(
                             imageVector = Icons.Filled.CalendarMonth,
                             contentDescription = "Calendar Planner",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -155,14 +178,14 @@ fun RoutineListScreen(
                             Icon(
                                 imageVector = Icons.Filled.History,
                                 contentDescription = "History",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                             if (uiState.completedSessions.isNotEmpty()) {
                                 Box(
                                     modifier = Modifier
-                                        .size(8.dp)
+                                        .size(7.dp)
                                         .clip(CircleShape)
-                                        .background(BrandTertiary)
+                                        .background(NothingRed)
                                         .align(Alignment.TopEnd)
                                 )
                             }
@@ -330,11 +353,16 @@ fun StatsSummaryBanner(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline,
+                shape = RoundedCornerShape(16.dp)
+            )
     ) {
         Row(
             modifier = Modifier
@@ -349,54 +377,85 @@ fun StatsSummaryBanner(
                     .weight(1f)
                     .clickable { onOpenHistory() }
             ) {
-                Text(text = "🔥", fontSize = 20.sp)
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(NothingRed)
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "$totalRoutines Routines Available",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                        text = "$totalRoutines PROTOCOLS ACTIVE",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     )
                     Text(
-                        text = if (completedSessions > 0) "$completedSessions sessions finished" else "Start your first countdown!",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (completedSessions > 0) "$completedSessions SESSIONS FINISHED" else "SYS // READY",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                    modifier = Modifier.clickable { onOpenCalendar() }
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        .clickable { onOpenCalendar() }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             Icons.Filled.CalendarMonth,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Calendar",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary
+                            text = "CALENDAR",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
-                Text(
-                    text = "Stats →",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onOpenHistory() }
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        .clickable { onOpenHistory() }
+                ) {
+                    Text(
+                        text = "STATS →",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                    )
+                }
             }
         }
     }
@@ -420,60 +479,106 @@ fun CategoryChipsRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val isDark = MaterialTheme.colorScheme.background == DarkBg
+
         // "All" chip
         FilterChip(
             selected = selectedCategoryId == null,
             onClick = { onSelectCategory(null) },
-            label = { Text("⚡ All Routines") },
-            shape = RoundedCornerShape(20.dp),
+            label = {
+                Text(
+                    "ALL",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                )
+            },
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (selectedCategoryId == null) NothingRed else MaterialTheme.colorScheme.outline
+            ),
             colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                selectedContainerColor = if (isDark) Color.White else Color.Black,
+                selectedLabelColor = if (isDark) Color.Black else Color.White,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
         // Predefined & custom categories
         categories.forEach { category ->
+            val isSelected = selectedCategoryId == category.id
             FilterChip(
-                selected = selectedCategoryId == category.id,
+                selected = isSelected,
                 onClick = {
-                    if (selectedCategoryId == category.id) {
+                    if (isSelected) {
                         onSelectCategory(null)
                     } else {
                         onSelectCategory(category.id)
                     }
                 },
-                label = { Text("${category.emoji} ${category.name}") },
-                shape = RoundedCornerShape(20.dp),
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(if (isSelected) NothingRed else Color(category.colorHex))
+                    )
+                },
+                label = {
+                    Text(
+                        category.name.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                },
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (isSelected) NothingRed else MaterialTheme.colorScheme.outline
+                ),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(category.colorHex),
-                    selectedLabelColor = Color.White
+                    selectedContainerColor = if (isDark) Color.White else Color.Black,
+                    selectedLabelColor = if (isDark) Color.Black else Color.White,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         }
 
         // Add Category Chip Button
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(14.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.clickable { onAddCategoryClick() }
+            modifier = Modifier
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+                .clickable { onAddCategoryClick() }
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    modifier = Modifier.size(13.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Category",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
+                    text = "NEW",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -490,22 +595,20 @@ fun RoutineCard(
     onSchedule: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val routineColor = Color(routine.colorHex)
     val workSteps = routine.steps.count { it.stepType == StepType.WORK }
     val restSteps = routine.steps.count { it.stepType == StepType.REST }
 
-    ElevatedCard(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(20.dp)
+                color = MaterialTheme.colorScheme.outline,
+                shape = RoundedCornerShape(18.dp)
             )
     ) {
         Column(
@@ -520,24 +623,11 @@ fun RoutineCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 category?.let {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(it.colorHex).copy(alpha = 0.15f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = it.emoji, fontSize = 14.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = it.name,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color(it.colorHex)
-                            )
-                        }
-                    }
-                }
+                    NothingPillTag(
+                        text = it.name.uppercase(),
+                        leadingDotColor = NothingRed
+                    )
+                } ?: Spacer(modifier = Modifier.width(1.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
@@ -548,7 +638,7 @@ fun RoutineCard(
                             Icons.Filled.CalendarMonth,
                             contentDescription = "Schedule Routine",
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(
@@ -587,15 +677,15 @@ fun RoutineCard(
                 }
             }
 
-
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Routine Title
             Text(
                 text = routine.title,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             )
 
@@ -611,7 +701,9 @@ fun RoutineCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            NothingDottedDivider()
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Steps overview chips
             Row(
@@ -619,96 +711,59 @@ fun RoutineCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Total Duration Badge
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Outlined.Timer,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = routine.formattedDuration,
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                NothingPillTag(
+                    text = "[ ${routine.formattedDuration} ]",
+                    isHighlight = true
+                )
 
-                // Step count badge
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Text(
-                        text = "${routine.steps.size} steps",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                NothingPillTag(
+                    text = "[ ${routine.steps.size} STEPS ]"
+                )
+
+                if (workSteps > 0) {
+                    NothingPillTag(
+                        text = "$workSteps WORK",
+                        leadingDotColor = NothingRed
                     )
                 }
 
-                if (workSteps > 0) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = WorkColor.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            text = "$workSteps Focus",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                            color = WorkColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-
                 if (restSteps > 0) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = RestColor.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            text = "$restSteps Rest",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                            color = RestColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                        )
-                    }
+                    NothingPillTag(
+                        text = "$restSteps REST",
+                        leadingDotColor = RestColor
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Start Countdown Timer Button
+            // Start Countdown Timer Button (Nothing OS Stark Pill Button)
             Button(
                 onClick = onPlay,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(14.dp),
+                    .height(46.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = routineColor
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
                 )
             ) {
                 Icon(
                     Icons.Filled.PlayArrow,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Start Routine Countdown",
-                    style = MaterialTheme.typography.labelLarge.copy(
+                    text = "START PROTOCOL // COUNTDOWN",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        letterSpacing = 1.sp,
+                        fontSize = 13.sp,
+                        color = Color.White
                     )
                 )
             }

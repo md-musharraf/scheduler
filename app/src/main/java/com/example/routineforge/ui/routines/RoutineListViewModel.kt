@@ -20,7 +20,8 @@ data class RoutineListUiState(
     val filteredRoutines: List<Routine> = emptyList(),
     val selectedCategoryId: String? = null,
     val searchQuery: String = "",
-    val completedSessions: List<CompletedSession> = emptyList()
+    val completedSessions: List<CompletedSession> = emptyList(),
+    val themeMode: String = "DARK"
 )
 
 class RoutineListViewModel(
@@ -30,14 +31,26 @@ class RoutineListViewModel(
     private val selectedCategoryId = MutableStateFlow<String?>(null)
     private val searchQuery = MutableStateFlow("")
 
+    private data class RepoState(
+        val categories: List<RoutineCategory>,
+        val routines: List<Routine>,
+        val sessions: List<CompletedSession>,
+        val themeMode: String
+    )
+
     val uiState: StateFlow<RoutineListUiState> = combine(
-        repository.categories,
-        repository.routines,
-        repository.sessions,
+        combine(
+            repository.categories,
+            repository.routines,
+            repository.sessions,
+            repository.themeMode
+        ) { categories, routines, sessions, theme ->
+            RepoState(categories, routines, sessions, theme)
+        },
         selectedCategoryId,
         searchQuery
-    ) { categories, routines, sessions, catId, query ->
-        val filtered = routines.filter { routine ->
+    ) { repo, catId, query ->
+        val filtered = repo.routines.filter { routine ->
             val matchesCategory = catId == null || routine.categoryId == catId
             val matchesQuery = query.isBlank() ||
                     routine.title.contains(query, ignoreCase = true) ||
@@ -46,18 +59,23 @@ class RoutineListViewModel(
         }
 
         RoutineListUiState(
-            categories = categories,
-            routines = routines,
+            categories = repo.categories,
+            routines = repo.routines,
             filteredRoutines = filtered,
             selectedCategoryId = catId,
             searchQuery = query,
-            completedSessions = sessions
+            completedSessions = repo.sessions,
+            themeMode = repo.themeMode
         )
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         RoutineListUiState()
     )
+
+    fun toggleThemeMode() {
+        repository.toggleThemeMode()
+    }
 
     fun selectCategory(categoryId: String?) {
         selectedCategoryId.value = categoryId

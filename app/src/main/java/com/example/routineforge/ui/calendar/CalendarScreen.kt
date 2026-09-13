@@ -69,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +81,11 @@ import com.example.routineforge.data.ScheduledRoutine
 import com.example.routineforge.theme.BrandPrimary
 import com.example.routineforge.theme.BrandSecondary
 import com.example.routineforge.theme.BrandTertiary
+import com.example.routineforge.theme.DarkBg
+import com.example.routineforge.theme.NothingDottedDivider
+import com.example.routineforge.theme.NothingPillTag
+import com.example.routineforge.theme.NothingRed
+import com.example.routineforge.theme.NothingSectionHeader
 import com.example.routineforge.theme.WorkColor
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -110,30 +116,37 @@ fun CalendarScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    Brush.linearGradient(listOf(BrandPrimary, BrandSecondary))
-                                ),
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.CalendarMonth,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                tint = NothingRed,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Calendar & Planning",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                text = "CALENDAR",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp,
+                                    letterSpacing = 1.sp
+                                )
                             )
                             Text(
-                                text = "Schedule routines & plan future goals",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "// PROTOCOL PLANNER",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    color = NothingRed
+                                )
                             )
                         }
                     }
@@ -146,9 +159,7 @@ fun CalendarScreen(
                 actions = {
                     // Today Quick Button
                     TextButton(onClick = { viewModel.jumpToToday() }) {
-                        Icon(Icons.Filled.Today, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Today", fontWeight = FontWeight.Bold)
+                        NothingPillTag(text = "TODAY", isHighlight = true, leadingDotColor = NothingRed)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -446,22 +457,26 @@ fun DayCell(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBg
+    val selectedBg = if (isDark) Color.White else Color.Black
+    val selectedFg = if (isDark) Color.Black else Color.White
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .padding(2.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
                 when {
-                    isSelected -> BrandPrimary
-                    isToday -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    isSelected -> selectedBg
+                    isToday -> MaterialTheme.colorScheme.surfaceVariant
                     else -> Color.Transparent
                 }
             )
             .border(
-                width = if (isToday && !isSelected) 1.5.dp else 0.dp,
-                color = if (isToday && !isSelected) BrandPrimary else Color.Transparent,
-                shape = RoundedCornerShape(12.dp)
+                width = if (isToday && !isSelected) 1.dp else if (isSelected) 0.dp else 0.5.dp,
+                color = if (isToday && !isSelected) NothingRed else if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(10.dp)
             )
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -473,19 +488,20 @@ fun DayCell(
             Text(
                 text = "$dayNumber",
                 style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
                     fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 13.sp
                 ),
                 color = when {
-                    isSelected -> Color.White
-                    isToday -> MaterialTheme.colorScheme.primary
+                    isSelected -> selectedFg
+                    isToday -> NothingRed
                     else -> MaterialTheme.colorScheme.onSurface
                 }
             )
 
-            // Indicators row (scheduled dot, completed dot)
+            // Indicators row (scheduled dot in NothingRed)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.height(6.dp)
             ) {
@@ -494,7 +510,7 @@ fun DayCell(
                         modifier = Modifier
                             .size(5.dp)
                             .clip(CircleShape)
-                            .background(if (isSelected) Color.White else BrandPrimary)
+                            .background(if (isSelected) selectedFg else NothingRed)
                     )
                 }
                 if (hasCompleted) {
@@ -502,7 +518,7 @@ fun DayCell(
                         modifier = Modifier
                             .size(5.dp)
                             .clip(CircleShape)
-                            .background(if (isSelected) Color.White else WorkColor)
+                            .background(if (isSelected) selectedFg else MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -517,16 +533,14 @@ fun ScheduledRoutineCard(
     onToggleCompleted: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val categoryColor = Color(item.categoryColorHex)
-
-    ElevatedCard(
+    Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = if (item.isCompleted) WorkColor.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                color = if (item.isCompleted) MaterialTheme.colorScheme.outline.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(16.dp)
             )
     ) {
@@ -543,23 +557,10 @@ fun ScheduledRoutineCard(
                 Checkbox(
                     checked = item.isCompleted,
                     onCheckedChange = { onToggleCompleted() },
-                    colors = CheckboxDefaults.colors(checkedColor = WorkColor)
+                    colors = CheckboxDefaults.colors(checkedColor = NothingRed)
                 )
 
                 Spacer(modifier = Modifier.width(6.dp))
-
-                // Emoji Icon Box
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = categoryColor.copy(alpha = 0.15f),
-                    modifier = Modifier.size(38.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(text = item.categoryEmoji, fontSize = 18.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
 
                 // Routine Title & Category Badge
                 Column(modifier = Modifier.weight(1f)) {
@@ -567,6 +568,7 @@ fun ScheduledRoutineCard(
                         text = item.routineTitle,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
                             color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 1,
@@ -574,8 +576,12 @@ fun ScheduledRoutineCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = item.categoryName,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, color = categoryColor)
+                        text = item.categoryName.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.SemiBold,
+                            color = NothingRed
+                        )
                     )
                 }
 
@@ -594,6 +600,8 @@ fun ScheduledRoutineCard(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+            NothingDottedDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Bottom row: Time badge & Start Button
             Row(
@@ -601,35 +609,39 @@ fun ScheduledRoutineCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "⏰ ${item.timeOfDay}",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                NothingPillTag(
+                    text = "[ ${item.timeOfDay} ]",
+                    isHighlight = true
+                )
 
                 Button(
                     onClick = onStart,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = categoryColor),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.height(36.dp)
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start", modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = Color.White
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "START",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
                 }
-            }
         }
     }
+}
 }
 
 @Composable

@@ -21,6 +21,19 @@ class RoutineRepository(private val storage: RoutineStorage) {
     private val _scheduledRoutines = MutableStateFlow<List<ScheduledRoutine>>(storage.getScheduledRoutines())
     val scheduledRoutines: StateFlow<List<ScheduledRoutine>> = _scheduledRoutines.asStateFlow()
 
+    private val _themeMode = MutableStateFlow<String>(storage.getThemeMode())
+    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: String) = synchronized(lock) {
+        storage.setThemeMode(mode)
+        _themeMode.value = mode
+    }
+
+    fun toggleThemeMode() = synchronized(lock) {
+        val next = if (_themeMode.value == "DARK") "LIGHT" else "DARK"
+        setThemeMode(next)
+    }
+
     fun scheduleRoutine(scheduled: ScheduledRoutine) = synchronized(lock) {
         storage.saveScheduledRoutine(scheduled)
         _scheduledRoutines.value = storage.getScheduledRoutines()

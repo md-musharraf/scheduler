@@ -15,6 +15,7 @@ class RoutineStorage(context: Context) {
         private const val KEY_SESSIONS = "sessions_json"
         private const val KEY_SCHEDULED = "scheduled_routines_json"
         private const val KEY_INITIALIZED = "is_initialized_v2"
+        private const val KEY_THEME_MODE = "theme_mode_key"
 
         val DEFAULT_CATEGORIES = listOf(
             RoutineCategory("cat_comm", "Communication Skills", "🎙️", 0xFF8B5CF6),
@@ -580,6 +581,15 @@ class RoutineStorage(context: Context) {
             if (it.id == id) it.copy(isCompleted = !it.isCompleted) else it
         }
         saveScheduledRoutines(current)
+    }
+
+    // Theme Mode ("DARK", "LIGHT", "SYSTEM")
+    fun getThemeMode(): String {
+        return prefs.getString(KEY_THEME_MODE, "DARK") ?: "DARK"
+    }
+
+    fun setThemeMode(mode: String) {
+        prefs.edit().putString(KEY_THEME_MODE, mode).apply()
     }
 }
 
