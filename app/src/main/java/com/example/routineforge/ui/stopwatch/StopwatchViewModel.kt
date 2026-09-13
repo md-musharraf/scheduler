@@ -3,6 +3,8 @@ package com.example.routineforge.ui.stopwatch
 import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.routineforge.service.ActiveTimerType
+import com.example.routineforge.service.TimerSessionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,10 +60,15 @@ class StopwatchViewModel : ViewModel() {
         baseTime = SystemClock.elapsedRealtime() - _uiState.value.elapsedMillis
         _uiState.value = _uiState.value.copy(isRunning = true)
 
+        TimerSessionManager.onTogglePlayPause = { togglePlayPause() }
+        TimerSessionManager.onStop = { reset() }
+
         timerJob = viewModelScope.launch {
             while (isActive && _uiState.value.isRunning) {
                 val now = SystemClock.elapsedRealtime()
-                _uiState.value = _uiState.value.copy(elapsedMillis = now - baseTime)
+                val elapsed = now - baseTime
+                _uiState.value = _uiState.value.copy(elapsedMillis = elapsed)
+                TimerSessionManager.updateStopwatch(elapsed, isRunning = true)
                 delay(10) // 10ms high-precision refresh (~100fps)
             }
         }
@@ -71,6 +78,7 @@ class StopwatchViewModel : ViewModel() {
         timerJob?.cancel()
         timerJob = null
         _uiState.value = _uiState.value.copy(isRunning = false)
+        TimerSessionManager.updateStopwatch(_uiState.value.elapsedMillis, isRunning = false)
     }
 
     fun lap() {
@@ -92,10 +100,13 @@ class StopwatchViewModel : ViewModel() {
     fun reset() {
         pause()
         _uiState.value = StopwatchUiState()
+        TimerSessionManager.clearSession(ActiveTimerType.STOPWATCH)
     }
 
     override fun onCleared() {
         super.onCleared()
         timerJob?.cancel()
+        TimerSessionManager.clearSession(ActiveTimerType.STOPWATCH)
     }
 }
+

@@ -5,6 +5,8 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.routineforge.data.RoutineCategory
+import com.example.routineforge.service.ActiveTimerType
+import com.example.routineforge.service.TimerSessionManager
 import com.example.routineforge.util.AlertHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -116,6 +118,11 @@ class SpecialTimerViewModel(
         targetEndTime = SystemClock.elapsedRealtime() + currentRemaining
         _uiState.update { it.copy(status = SpecialTimerStatus.RUNNING) }
 
+        TimerSessionManager.onTogglePlayPause = {
+            if (_uiState.value.status == SpecialTimerStatus.RUNNING) pause() else resume()
+        }
+        TimerSessionManager.onStop = { reset() }
+
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (isActive) {
@@ -123,8 +130,17 @@ class SpecialTimerViewModel(
                 val left = (targetEndTime - now).coerceAtLeast(0L)
                 _uiState.update { it.copy(remainingMillis = left) }
 
+                TimerSessionManager.updateSpecialTimer(
+                    title = _uiState.value.selectedCategory.name.uppercase(),
+                    colorHex = _uiState.value.selectedCategory.colorHex,
+                    remainingMillis = left,
+                    totalDurationMillis = _uiState.value.totalDurationMillis,
+                    isRunning = true
+                )
+
                 if (left <= 0L) {
                     _uiState.update { it.copy(status = SpecialTimerStatus.FINISHED, remainingMillis = 0L) }
+                    TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
                     // Trigger 1-second authoritative alert vibration & tone
                     alertHelper.playRoutineComplete(soundEnabled = true, vibeEnabled = true)
                     break
@@ -145,6 +161,13 @@ class SpecialTimerViewModel(
                 remainingMillis = left
             )
         }
+        TimerSessionManager.updateSpecialTimer(
+            title = _uiState.value.selectedCategory.name.uppercase(),
+            colorHex = _uiState.value.selectedCategory.colorHex,
+            remainingMillis = left,
+            totalDurationMillis = _uiState.value.totalDurationMillis,
+            isRunning = false
+        )
     }
 
     fun resume() {
@@ -162,6 +185,7 @@ class SpecialTimerViewModel(
                 totalDurationMillis = initialMs
             )
         }
+        TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
     }
 
     fun restart() {
@@ -172,5 +196,6 @@ class SpecialTimerViewModel(
     override fun onCleared() {
         super.onCleared()
         timerJob?.cancel()
+        TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
     }
 }

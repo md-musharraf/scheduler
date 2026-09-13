@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
@@ -52,12 +53,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.routineforge.theme.NothingRed
 import com.example.routineforge.theme.NothingRedLight
+import com.example.routineforge.theme.TabularStopwatchDigits
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -104,6 +107,26 @@ fun StopwatchScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    val context = LocalContext.current
+                    IconButton(
+                        onClick = {
+                            val activity = context as? android.app.Activity
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                val params = android.app.PictureInPictureParams.Builder()
+                                    .setAspectRatio(android.util.Rational(1, 1))
+                                    .build()
+                                activity?.enterPictureInPictureMode(params)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PictureInPictureAlt,
+                            contentDescription = "Floating Mini Timer",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -177,28 +200,13 @@ fun StopwatchScreen(
                     }
                 }
 
-                // Digits Display
+                // Rock-solid fixed width Digits Display (Zero horizontal jitter)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = uiState.formattedTime,
-                            fontSize = 44.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = (-1).sp
-                        )
-                        Text(
-                            text = ".${uiState.formattedMillis}",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            color = NothingRed,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                    }
+                    TabularStopwatchDigits(
+                        elapsedMillis = uiState.elapsedMillis,
+                        digitSize = 40.sp,
+                        millisSize = 22.sp
+                    )
 
                     Surface(
                         shape = RoundedCornerShape(12.dp),

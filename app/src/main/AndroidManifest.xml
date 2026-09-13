@@ -16,7 +16,9 @@
         android:theme="@style/Theme.RoutineForge">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -35,6 +37,17 @@
         <receiver
             android:name=".service.RoutineTimerReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".widget.NothingTimerWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_nothing_timer_info" />
+        </receiver>
     </application>
 
 </manifest>

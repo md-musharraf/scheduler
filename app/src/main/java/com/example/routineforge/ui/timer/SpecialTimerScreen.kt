@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
@@ -53,6 +54,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -75,6 +78,7 @@ import androidx.compose.ui.unit.sp
 import com.example.routineforge.data.RoutineCategory
 import com.example.routineforge.theme.NothingRed
 import com.example.routineforge.theme.NothingRedLight
+import com.example.routineforge.theme.TabularTimerDigits
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
@@ -129,6 +133,26 @@ fun SpecialTimerScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    val context = LocalContext.current
+                    IconButton(
+                        onClick = {
+                            val activity = context as? android.app.Activity
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                val params = android.app.PictureInPictureParams.Builder()
+                                    .setAspectRatio(android.util.Rational(1, 1))
+                                    .build()
+                                activity?.enterPictureInPictureMode(params)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PictureInPictureAlt,
+                            contentDescription = "Floating Mini Timer",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -579,12 +603,8 @@ fun SpecialTimerDial(
         NothingRed
     }
 
-    // Smooth sweep progress
-    val animatedProgress by animateFloatAsState(
-        targetValue = uiState.progress,
-        animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
-        label = "dial_progress"
-    )
+    // Direct 60fps linear sweep progress without stuttering tween conflicts
+    val dialProgress = uiState.progress.coerceIn(0f, 1f)
 
     Box(
         modifier = modifier,
@@ -618,18 +638,18 @@ fun SpecialTimerDial(
                 style = Stroke(width = strokeWidth)
             )
 
-            // 3. Progress Arc (Remaining time)
-            if (animatedProgress > 0f) {
+            // 3. Progress Arc (Remaining time) - ultra smooth continuous sweep
+            if (dialProgress > 0f) {
                 drawArc(
                     color = sweepColor,
                     startAngle = -90f,
-                    sweepAngle = 360f * animatedProgress,
+                    sweepAngle = 360f * dialProgress,
                     useCenter = false,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
 
                 // Glowing Leading Bead Indicator
-                val beadAngleRad = Math.toRadians((-90.0 + 360.0 * animatedProgress))
+                val beadAngleRad = Math.toRadians((-90.0 + 360.0 * dialProgress))
                 val beadX = center.x + (radius * cos(beadAngleRad)).toFloat()
                 val beadY = center.y + (radius * sin(beadAngleRad)).toFloat()
                 drawCircle(
@@ -676,31 +696,19 @@ fun SpecialTimerDial(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Big Countdown Digits with Milliseconds
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = uiState.formattedRemaining,
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 42.sp,
-                        letterSpacing = 1.sp
-                    )
-                )
-                Text(
-                    text = ".${uiState.formattedMillis}",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 22.sp,
-                        color = NothingRed
-                    ),
-                    modifier = Modifier.padding(bottom = 4.dp, start = 2.dp)
-                )
-            }
+            // Rock-solid fixed-width Tabular Digit Slots (Zero horizontal jitter)
+            val totalSec = uiState.remainingMillis / 1000
+            val h = (totalSec / 3600).toInt()
+            val m = ((totalSec % 3600) / 60).toInt()
+            val s = (totalSec % 60).toInt()
+            val ms = ((uiState.remainingMillis % 1000) / 10).toInt()
+
+            TabularTimerDigits(
+                hours = h,
+                minutes = m,
+                seconds = s,
+                millis = ms
+            )
 
             Spacer(modifier = Modifier.height(6.dp))
 

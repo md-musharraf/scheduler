@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,7 +30,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -202,3 +205,161 @@ fun NothingSectionHeader(
         )
     }
 }
+
+/**
+ * Ultra-stable Nothing OS Tabular Timer Display
+ * Uses fixed-width slot boxes for HH, MM, SS, ms to ensure 0.00px horizontal jitter
+ * when millisecond digits tick at 60-80fps.
+ */
+@Composable
+fun TabularTimerDigits(
+    hours: Int,
+    minutes: Int,
+    seconds: Int,
+    millis: Int,
+    modifier: Modifier = Modifier,
+    digitSize: TextUnit = 40.sp,
+    millisSize: TextUnit = 22.sp
+) {
+    val textStyle = MaterialTheme.typography.displayMedium.copy(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Bold,
+        fontSize = digitSize,
+        letterSpacing = 0.sp,
+        textAlign = TextAlign.Center
+    )
+    val delimiterStyle = textStyle.copy(
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    )
+    val millisStyle = MaterialTheme.typography.titleLarge.copy(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Bold,
+        fontSize = millisSize,
+        letterSpacing = 0.sp,
+        color = NothingRed,
+        textAlign = TextAlign.Start
+    )
+
+    // Calculate box widths based on font size scale to comfortably fit monospace glyphs
+    val digitBoxWidth = if (digitSize <= 30.sp) 48.dp else 70.dp
+    val colonBoxWidth = if (digitSize <= 30.sp) 14.dp else 18.dp
+    val dotBoxWidth = if (millisSize <= 16.sp) 8.dp else 12.dp
+    val millisBoxWidth = if (millisSize <= 16.sp) 34.dp else 50.dp
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (hours > 0) {
+            Box(
+                modifier = Modifier.width(digitBoxWidth),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "%02d".format(hours),
+                    style = textStyle,
+                    maxLines = 1
+                )
+            }
+            Box(
+                modifier = Modifier.width(colonBoxWidth),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = ":",
+                    style = delimiterStyle,
+                    maxLines = 1
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier.width(digitBoxWidth),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "%02d".format(minutes),
+                style = textStyle,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+
+        Box(
+            modifier = Modifier.width(colonBoxWidth),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = ":",
+                style = delimiterStyle,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+
+        Box(
+            modifier = Modifier.width(digitBoxWidth),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "%02d".format(seconds),
+                style = textStyle,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+
+        Box(
+            modifier = Modifier.width(dotBoxWidth),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Text(
+                text = ".",
+                style = millisStyle,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+
+        Box(
+            modifier = Modifier.width(millisBoxWidth),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            Text(
+                text = "%02d".format(millis.coerceIn(0, 99)),
+                style = millisStyle,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+
+/**
+ * Tabular Stopwatch Digits Wrapper
+ */
+@Composable
+fun TabularStopwatchDigits(
+    elapsedMillis: Long,
+    modifier: Modifier = Modifier,
+    digitSize: TextUnit = 40.sp,
+    millisSize: TextUnit = 22.sp
+) {
+    val totalSeconds = elapsedMillis / 1000
+    val hours = (totalSeconds / 3600).toInt()
+    val minutes = ((totalSeconds % 3600) / 60).toInt()
+    val seconds = (totalSeconds % 60).toInt()
+    val millis = ((elapsedMillis % 1000) / 10).toInt()
+
+    TabularTimerDigits(
+        hours = hours,
+        minutes = minutes,
+        seconds = seconds,
+        millis = millis,
+        modifier = modifier,
+        digitSize = digitSize,
+        millisSize = millisSize
+    )
+}
+

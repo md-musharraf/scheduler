@@ -1,18 +1,27 @@
 package com.example.routineforge
 
 import android.app.Application
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.routineforge.data.RoutineRepository
+import com.example.routineforge.service.ActiveTimerType
+import com.example.routineforge.service.TimerSessionManager
 import com.example.routineforge.ui.calendar.CalendarScreen
 import com.example.routineforge.ui.calendar.CalendarViewModel
+import com.example.routineforge.ui.components.FloatingMiniTimerBar
 import com.example.routineforge.ui.editor.RoutineEditorScreen
 import com.example.routineforge.ui.editor.RoutineEditorViewModel
 import com.example.routineforge.ui.history.HistoryStatsScreen
@@ -27,119 +36,154 @@ import com.example.routineforge.ui.timer.SpecialTimerScreen
 import com.example.routineforge.ui.timer.SpecialTimerViewModel
 
 @Composable
-fun MainNavigation(initialRoutineId: String? = null) {
+fun MainNavigation(
+    initialRoutineId: String? = null,
+    targetNav: String? = null
+) {
     val context = LocalContext.current
     val repository = remember { RoutineRepository.getInstance(context) }
     val backStack = rememberNavBackStack(RoutineListNav)
 
-    androidx.compose.runtime.LaunchedEffect(initialRoutineId) {
+    androidx.compose.runtime.LaunchedEffect(initialRoutineId, targetNav) {
         if (initialRoutineId != null && backStack.lastOrNull() !is RoutinePlayerNav) {
             backStack.add(RoutinePlayerNav(initialRoutineId))
+        } else if (targetNav == "SPECIAL_TIMER" && backStack.lastOrNull() !is SpecialTimerNav) {
+            backStack.add(SpecialTimerNav)
         }
     }
 
-    NavDisplay(
-        backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
-        entryProvider = entryProvider {
-            entry<RoutineListNav> {
-                val viewModel: RoutineListViewModel = viewModel {
-                    RoutineListViewModel(repository)
-                }
-                RoutineListScreen(
-                    viewModel = viewModel,
-                    onStartRoutine = { routineId ->
-                        backStack.add(RoutinePlayerNav(routineId))
-                    },
-                    onEditRoutine = { routineId ->
-                        backStack.add(RoutineEditorNav(routineId))
-                    },
-                    onOpenHistory = {
-                        backStack.add(HistoryStatsNav)
-                    },
-                    onOpenCalendar = {
-                        backStack.add(CalendarNav)
-                    },
-                    onOpenStopwatch = {
-                        backStack.add(StopwatchNav)
-                    },
-                    onOpenSpecialTimer = {
-                        backStack.add(SpecialTimerNav)
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+    val currentNav = backStack.lastOrNull()
+    val activeSession by TimerSessionManager.session.collectAsState()
 
-            entry<RoutineEditorNav> { navKey ->
-                val viewModel: RoutineEditorViewModel = viewModel(key = navKey.routineId ?: "new") {
-                    RoutineEditorViewModel(repository, navKey.routineId)
-                }
-                RoutineEditorScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+    val isCurrentScreenSameAsTimer = when (activeSession.type) {
+        ActiveTimerType.SPECIAL_TIMER -> currentNav is SpecialTimerNav
+        ActiveTimerType.STOPWATCH -> currentNav is StopwatchNav
+        ActiveTimerType.ROUTINE -> currentNav is RoutinePlayerNav
+        ActiveTimerType.NONE -> true
+    }
 
-            entry<RoutinePlayerNav> { navKey ->
-                val application = context.applicationContext as Application
-                val viewModel: RoutinePlayerViewModel = viewModel(key = navKey.routineId) {
-                    RoutinePlayerViewModel(application, repository, navKey.routineId)
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavDisplay(
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            entryProvider = entryProvider {
+                entry<RoutineListNav> {
+                    val viewModel: RoutineListViewModel = viewModel {
+                        RoutineListViewModel(repository)
+                    }
+                    RoutineListScreen(
+                        viewModel = viewModel,
+                        onStartRoutine = { routineId ->
+                            backStack.add(RoutinePlayerNav(routineId))
+                        },
+                        onEditRoutine = { routineId ->
+                            backStack.add(RoutineEditorNav(routineId))
+                        },
+                        onOpenHistory = {
+                            backStack.add(HistoryStatsNav)
+                        },
+                        onOpenCalendar = {
+                            backStack.add(CalendarNav)
+                        },
+                        onOpenStopwatch = {
+                            backStack.add(StopwatchNav)
+                        },
+                        onOpenSpecialTimer = {
+                            backStack.add(SpecialTimerNav)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-                RoutinePlayerScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
 
-            entry<HistoryStatsNav> {
-                val viewModel: HistoryStatsViewModel = viewModel {
-                    HistoryStatsViewModel(repository)
+                entry<RoutineEditorNav> { navKey ->
+                    val viewModel: RoutineEditorViewModel = viewModel(key = navKey.routineId ?: "new") {
+                        RoutineEditorViewModel(repository, navKey.routineId)
+                    }
+                    RoutineEditorScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-                HistoryStatsScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
 
-            entry<CalendarNav> {
-                val viewModel: CalendarViewModel = viewModel {
-                    CalendarViewModel(repository)
+                entry<RoutinePlayerNav> { navKey ->
+                    val application = context.applicationContext as Application
+                    val viewModel: RoutinePlayerViewModel = viewModel(key = navKey.routineId) {
+                        RoutinePlayerViewModel(application, repository, navKey.routineId)
+                    }
+                    RoutinePlayerScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-                CalendarScreen(
-                    viewModel = viewModel,
-                    onStartRoutine = { routineId ->
-                        backStack.add(RoutinePlayerNav(routineId))
-                    },
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
 
-            entry<StopwatchNav> {
-                val viewModel: StopwatchViewModel = viewModel {
-                    StopwatchViewModel()
+                entry<HistoryStatsNav> {
+                    val viewModel: HistoryStatsViewModel = viewModel {
+                        HistoryStatsViewModel(repository)
+                    }
+                    HistoryStatsScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-                StopwatchScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
 
-            entry<SpecialTimerNav> {
-                val application = context.applicationContext as Application
-                val viewModel: SpecialTimerViewModel = viewModel {
-                    SpecialTimerViewModel(application)
+                entry<CalendarNav> {
+                    val viewModel: CalendarViewModel = viewModel {
+                        CalendarViewModel(repository)
+                    }
+                    CalendarScreen(
+                        viewModel = viewModel,
+                        onStartRoutine = { routineId ->
+                            backStack.add(RoutinePlayerNav(routineId))
+                        },
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
-                SpecialTimerScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.fillMaxSize()
-                )
+
+                entry<StopwatchNav> {
+                    val viewModel: StopwatchViewModel = viewModel {
+                        StopwatchViewModel()
+                    }
+                    StopwatchScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                entry<SpecialTimerNav> {
+                    val application = context.applicationContext as Application
+                    val viewModel: SpecialTimerViewModel = viewModel {
+                        SpecialTimerViewModel(application)
+                    }
+                    SpecialTimerScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
+        )
+
+        // Docked In-App Floating Mini-Timer Pill
+        if (!isCurrentScreenSameAsTimer) {
+            FloatingMiniTimerBar(
+                session = activeSession,
+                onNavigateToTimer = { type, routineId ->
+                    when (type) {
+                        ActiveTimerType.SPECIAL_TIMER -> backStack.add(SpecialTimerNav)
+                        ActiveTimerType.STOPWATCH -> backStack.add(StopwatchNav)
+                        ActiveTimerType.ROUTINE -> if (routineId != null) backStack.add(RoutinePlayerNav(routineId))
+                        ActiveTimerType.NONE -> {}
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 86.dp)
+            )
         }
-    )
+    }
 }

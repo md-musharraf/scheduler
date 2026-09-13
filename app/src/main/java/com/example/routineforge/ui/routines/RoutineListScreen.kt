@@ -243,14 +243,6 @@ fun RoutineListScreen(
                     .fillMaxSize()
                     .widthIn(max = 680.dp)
             ) {
-            // Stats summary bar
-            StatsSummaryBanner(
-                totalRoutines = uiState.routines.size,
-                completedSessions = uiState.completedSessions.size,
-                onOpenHistory = onOpenHistory,
-                onOpenCalendar = onOpenCalendar
-            )
-
             // 3-Tab Mode Switcher (Protocols, Special Timer, Stopwatch)
             Row(
                 modifier = Modifier
