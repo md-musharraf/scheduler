@@ -104,6 +104,7 @@ fun CalendarScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showScheduleDialog by remember { mutableStateOf(false) }
+    var isWeekView by remember { mutableStateOf(false) }
 
     val monthFormatter = remember { DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()) }
     val dayFormatter = remember { DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy", Locale.getDefault()) }
@@ -111,61 +112,63 @@ fun CalendarScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CalendarMonth,
-                                contentDescription = null,
-                                tint = NothingRed,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "CALENDAR",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp,
-                                    letterSpacing = 1.sp
+            Column {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.CalendarMonth,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = NothingRed
                                 )
-                            )
-                            Text(
-                                text = "// PROTOCOL PLANNER",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    color = NothingRed
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "CALENDAR",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
                                 )
-                            )
+                                Text(
+                                    text = "// PROTOCOL PLANNER",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp,
+                                        color = NothingRed
+                                    )
+                                )
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    // Today Quick Button
-                    TextButton(onClick = { viewModel.jumpToToday() }) {
-                        NothingPillTag(text = "TODAY", isHighlight = true, leadingDotColor = NothingRed)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        // Today Quick Button
+                        TextButton(onClick = { viewModel.jumpToToday() }) {
+                            NothingPillTag(text = "TODAY", isHighlight = true, leadingDotColor = NothingRed)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
-            )
+                NothingDottedDivider()
+            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -177,9 +180,12 @@ fun CalendarScreen(
         ) {
             // Month Header Controls Card
             item {
-                ElevatedCard(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         // Month Selector Row (< September 2026 >)
@@ -188,20 +194,50 @@ fun CalendarScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { viewModel.changeMonth(-1) }) {
-                                Icon(Icons.Filled.ChevronLeft, contentDescription = "Previous Month")
+                            IconButton(onClick = {
+                                if (isWeekView) {
+                                    viewModel.selectDate(uiState.selectedDate.minusWeeks(1))
+                                } else {
+                                    viewModel.changeMonth(-1)
+                                }
+                            }) {
+                                Icon(Icons.Filled.ChevronLeft, contentDescription = "Previous")
                             }
 
-                            Text(
-                                text = uiState.displayedMonth.format(monthFormatter),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 18.sp
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = if (isWeekView) {
+                                        uiState.selectedDate.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.getDefault())).uppercase()
+                                    } else {
+                                        uiState.displayedMonth.format(monthFormatter).uppercase()
+                                    },
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 15.sp,
+                                        letterSpacing = 0.5.sp
+                                    )
                                 )
-                            )
 
-                            IconButton(onClick = { viewModel.changeMonth(1) }) {
-                                Icon(Icons.Filled.ChevronRight, contentDescription = "Next Month")
+                                NothingPillTag(
+                                    text = if (isWeekView) "7D" else "30D",
+                                    isHighlight = isWeekView,
+                                    leadingDotColor = if (isWeekView) NothingRed else null,
+                                    modifier = Modifier.clickable { isWeekView = !isWeekView }
+                                )
+                            }
+
+                            IconButton(onClick = {
+                                if (isWeekView) {
+                                    viewModel.selectDate(uiState.selectedDate.plusWeeks(1))
+                                } else {
+                                    viewModel.changeMonth(1)
+                                }
+                            }) {
+                                Icon(Icons.Filled.ChevronRight, contentDescription = "Next")
                             }
                         }
 
@@ -218,8 +254,12 @@ fun CalendarScreen(
                             )
                             daysOfWeek.forEach { day ->
                                 Text(
-                                    text = day.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    text = day.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3).uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    ),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                     modifier = Modifier.weight(1f),
                                     textAlign = TextAlign.Center
@@ -227,18 +267,19 @@ fun CalendarScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        // Month Day Grid
-                        MonthGrid(
+                        // Month / Week Day Grid
+                        CalendarGrid(
                             displayedMonth = uiState.displayedMonth,
                             selectedDate = uiState.selectedDate,
+                            isWeekView = isWeekView,
                             scheduledDateSet = uiState.scheduledDateSet,
                             completedDateSet = uiState.completedDateSet,
                             onDateSelected = { viewModel.selectDate(it) }
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         // Legend (Scheduled Dot vs Completed Dot)
                         Row(
@@ -248,14 +289,17 @@ fun CalendarScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(BrandPrimary)
+                                    .background(NothingRed)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = "Scheduled",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "SCHEDULED",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
@@ -263,14 +307,17 @@ fun CalendarScreen(
 
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(WorkColor)
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = "Completed",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "COMPLETED",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -285,25 +332,53 @@ fun CalendarScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
+                    ) {
                         Text(
                             text = uiState.selectedDate.format(dayFormatter),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 15.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${uiState.scheduledForSelectedDate.size} scheduled • ${uiState.completedSessionsForSelectedDate.size} completed",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "${uiState.scheduledForSelectedDate.size} SCHEDULED • ${uiState.completedSessionsForSelectedDate.size} COMPLETED",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
                     Button(
                         onClick = { showScheduleDialog = true },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NothingRed,
+                            contentColor = Color.White
+                        )
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Plan Routine")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "PLAN",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                        )
                     }
                 }
             }
@@ -395,6 +470,54 @@ fun CalendarScreen(
 }
 
 @Composable
+fun CalendarGrid(
+    displayedMonth: YearMonth,
+    selectedDate: LocalDate,
+    isWeekView: Boolean,
+    scheduledDateSet: Set<Long>,
+    completedDateSet: Set<Long>,
+    onDateSelected: (LocalDate) -> Unit
+) {
+    if (isWeekView) {
+        val dayOfWeek = selectedDate.dayOfWeek.value
+        val startOfWeek = selectedDate.minusDays((dayOfWeek - 1).toLong())
+        val today = LocalDate.now()
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            for (i in 0 until 7) {
+                val cellDate = startOfWeek.plusDays(i.toLong())
+                val cellEpoch = cellDate.toEpochDay()
+                val isSelected = cellDate == selectedDate
+                val isToday = cellDate == today
+                val hasScheduled = scheduledDateSet.contains(cellEpoch)
+                val hasCompleted = completedDateSet.contains(cellEpoch)
+
+                DayCell(
+                    dayNumber = cellDate.dayOfMonth,
+                    isSelected = isSelected,
+                    isToday = isToday,
+                    hasScheduled = hasScheduled,
+                    hasCompleted = hasCompleted,
+                    onClick = { onDateSelected(cellDate) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    } else {
+        MonthGrid(
+            displayedMonth = displayedMonth,
+            selectedDate = selectedDate,
+            scheduledDateSet = scheduledDateSet,
+            completedDateSet = completedDateSet,
+            onDateSelected = onDateSelected
+        )
+    }
+}
+
+@Composable
 fun MonthGrid(
     displayedMonth: YearMonth,
     selectedDate: LocalDate,
@@ -410,7 +533,7 @@ fun MonthGrid(
     // Generate grid items (total 35 or 42 cells)
     val totalCells = ((dayOfWeekOfFirst - 1 + daysInMonth + 6) / 7) * 7
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         for (row in 0 until totalCells / 7) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -463,9 +586,9 @@ fun DayCell(
 
     Box(
         modifier = modifier
-            .aspectRatio(1f)
-            .padding(2.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .aspectRatio(1.05f)
+            .padding(1.5.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(
                 when {
                     isSelected -> selectedBg
@@ -476,7 +599,7 @@ fun DayCell(
             .border(
                 width = if (isToday && !isSelected) 1.dp else if (isSelected) 0.dp else 0.5.dp,
                 color = if (isToday && !isSelected) NothingRed else if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(8.dp)
             )
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -649,48 +772,65 @@ fun CompletedDaySessionCard(session: CompletedSession) {
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline,
+                shape = RoundedCornerShape(14.dp)
+            )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     Icons.Filled.CheckCircle,
                     contentDescription = null,
-                    tint = WorkColor,
+                    tint = NothingRed,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
                         text = session.routineTitle,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${session.categoryName} • ${session.stepsCompleted} steps completed",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "${session.categoryName.uppercase()} • ${session.stepsCompleted} STEPS DONE",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = WorkColor.copy(alpha = 0.15f)
-            ) {
-                Text(
-                    text = session.formattedDuration(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = WorkColor),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
+            NothingPillTag(
+                text = "[ ${session.formattedDuration()} ]",
+                isHighlight = true,
+                leadingDotColor = NothingRed
+            )
         }
     }
 }
