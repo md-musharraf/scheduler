@@ -51,7 +51,7 @@ class AlertHelper(private val context: Context) {
     fun playStepTransition(soundEnabled: Boolean = true, vibeEnabled: Boolean = true) {
         if (soundEnabled) {
             try {
-                toneGenerator?.startTone(ToneGenerator.TONE_PROP_ACK, 280)
+                toneGenerator?.startTone(ToneGenerator.TONE_PROP_ACK, 350)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -59,15 +59,15 @@ class AlertHelper(private val context: Context) {
         if (vibeEnabled) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val timings = longArrayOf(0, 180, 90, 260)
-                    val amplitudes = intArrayOf(0, 220, 0, 255)
-                    vibrator?.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+                    // Full 1-second (1000ms) authoritative haptic vibration for task transitions
+                    val effect = VibrationEffect.createOneShot(1000L, VibrationEffect.DEFAULT_AMPLITUDE)
+                    vibrator?.vibrate(effect)
                 } else {
                     @Suppress("DEPRECATION")
-                    vibrator?.vibrate(longArrayOf(0, 180, 90, 260), -1)
+                    vibrator?.vibrate(1000L)
                 }
             } catch (e: Exception) {
-                vibrate(300)
+                vibrate(1000L)
             }
         }
     }
@@ -83,15 +83,16 @@ class AlertHelper(private val context: Context) {
         if (vibeEnabled) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val timings = longArrayOf(0, 150, 100, 200, 100, 400, 100, 500)
-                    val amplitudes = intArrayOf(0, 200, 0, 230, 0, 255, 0, 255)
+                    // 1200ms celebratory haptic pattern (two 500ms pulses with 200ms rest)
+                    val timings = longArrayOf(0, 500, 200, 500)
+                    val amplitudes = intArrayOf(0, 255, 0, 255)
                     vibrator?.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
                 } else {
                     @Suppress("DEPRECATION")
-                    vibrator?.vibrate(longArrayOf(0, 150, 100, 200, 100, 400, 100, 500), -1)
+                    vibrator?.vibrate(longArrayOf(0, 500, 200, 500), -1)
                 }
             } catch (e: Exception) {
-                vibrate(600)
+                vibrate(1000L)
             }
         }
     }

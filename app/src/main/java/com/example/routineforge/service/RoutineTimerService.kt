@@ -178,10 +178,8 @@ class RoutineTimerService : Service() {
             "%02d:%02d".format(catMins, catSecs)
         }
 
-        val statusSymbol = if (isPlaying) "⏳" else "⏸"
-        val titleText = "$statusSymbol $subtaskTimeStr  //  $subtaskTitle"
-        val stepInfo = "Step ${stepIndex + 1}/$stepTotalCount"
-        val contentText = "$categoryName • $stepInfo • $catTimeStr Total Left"
+        val titleText = subtaskTitle
+        val contentText = subtaskTimeStr
 
         // Open App Intent
         val tapIntent = Intent(this, MainActivity::class.java).apply {
@@ -228,16 +226,9 @@ class RoutineTimerService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val largeIconBitmap = try {
-            BitmapFactory.decodeResource(resources, R.drawable.app_brand_logo)
-        } catch (_: Exception) {
-            null
-        }
-
         val remoteViews = android.widget.RemoteViews(packageName, R.layout.notification_timer_layout).apply {
             setTextViewText(R.id.notif_timer_text, subtaskTimeStr)
             setTextViewText(R.id.notif_subtask_title, subtaskTitle)
-            setTextViewText(R.id.notif_category_info, "$categoryName • Step ${stepIndex + 1}/$stepTotalCount ($catTimeStr Left)")
             setImageViewResource(
                 R.id.notif_btn_play_pause,
                 if (isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
@@ -251,7 +242,6 @@ class RoutineTimerService : Service() {
             .setSmallIcon(R.drawable.ic_notification_timer)
             .setContentTitle(titleText)
             .setContentText(contentText)
-            .setSubText("ROUTINEFORGE // PROTOCOL")
             .setContentIntent(pendingTapIntent)
             .setCustomContentView(remoteViews)
             .setCustomBigContentView(remoteViews)
