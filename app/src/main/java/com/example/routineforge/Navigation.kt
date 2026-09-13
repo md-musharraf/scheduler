@@ -21,6 +21,10 @@ import com.example.routineforge.ui.player.RoutinePlayerScreen
 import com.example.routineforge.ui.player.RoutinePlayerViewModel
 import com.example.routineforge.ui.routines.RoutineListScreen
 import com.example.routineforge.ui.routines.RoutineListViewModel
+import com.example.routineforge.ui.stopwatch.StopwatchScreen
+import com.example.routineforge.ui.stopwatch.StopwatchViewModel
+import com.example.routineforge.ui.timer.SpecialTimerScreen
+import com.example.routineforge.ui.timer.SpecialTimerViewModel
 
 @Composable
 fun MainNavigation(initialRoutineId: String? = null) {
@@ -55,6 +59,12 @@ fun MainNavigation(initialRoutineId: String? = null) {
                     },
                     onOpenCalendar = {
                         backStack.add(CalendarNav)
+                    },
+                    onOpenStopwatch = {
+                        backStack.add(StopwatchNav)
+                    },
+                    onOpenSpecialTimer = {
+                        backStack.add(SpecialTimerNav)
                     },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -103,6 +113,29 @@ fun MainNavigation(initialRoutineId: String? = null) {
                     onStartRoutine = { routineId ->
                         backStack.add(RoutinePlayerNav(routineId))
                     },
+                    onNavigateBack = { backStack.removeLastOrNull() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            entry<StopwatchNav> {
+                val viewModel: StopwatchViewModel = viewModel {
+                    StopwatchViewModel()
+                }
+                StopwatchScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { backStack.removeLastOrNull() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            entry<SpecialTimerNav> {
+                val application = context.applicationContext as Application
+                val viewModel: SpecialTimerViewModel = viewModel {
+                    SpecialTimerViewModel(application)
+                }
+                SpecialTimerScreen(
+                    viewModel = viewModel,
                     onNavigateBack = { backStack.removeLastOrNull() },
                     modifier = Modifier.fillMaxSize()
                 )

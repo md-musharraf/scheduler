@@ -83,6 +83,13 @@ class RoutineRepository(private val storage: RoutineStorage) {
         _sessions.value = emptyList()
     }
 
+    fun clearAllData() = synchronized(lock) {
+        storage.clearAllData()
+        _routines.value = emptyList()
+        _sessions.value = emptyList()
+        _scheduledRoutines.value = emptyList()
+    }
+
 
     companion object {
         @Volatile

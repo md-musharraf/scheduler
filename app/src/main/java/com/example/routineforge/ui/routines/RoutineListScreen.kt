@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
@@ -107,10 +108,13 @@ fun RoutineListScreen(
     onEditRoutine: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenStopwatch: () -> Unit,
+    onOpenSpecialTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var showClearDbDialog by remember { mutableStateOf(false) }
     var routineToDelete by remember { mutableStateOf<Routine?>(null) }
     var routineToSchedule by remember { mutableStateOf<Routine?>(null) }
 
@@ -127,7 +131,7 @@ fun RoutineListScreen(
                                 .size(32.dp)
                                 .clip(RoundedCornerShape(7.dp))
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Column {
                             Text(
                                 text = "ROUTINEFORGE",
@@ -135,8 +139,8 @@ fun RoutineListScreen(
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    letterSpacing = 0.5.sp
+                                    fontSize = 11.sp,
+                                    letterSpacing = 0.sp
                                 )
                             )
                             Text(
@@ -192,6 +196,17 @@ fun RoutineListScreen(
                             }
                         }
                     }
+
+                    // Clear Database Action Button
+                    IconButton(
+                        onClick = { showClearDbDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.DeleteSweep,
+                            contentDescription = "Clear Database",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
@@ -235,6 +250,36 @@ fun RoutineListScreen(
                 onOpenHistory = onOpenHistory,
                 onOpenCalendar = onOpenCalendar
             )
+
+            // 3-Tab Mode Switcher (Protocols, Special Timer, Stopwatch)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ModeTabPill(
+                    label = "PROTOCOLS",
+                    count = uiState.routines.size,
+                    isSelected = true,
+                    onClick = { /* already here */ },
+                    modifier = Modifier.weight(1f)
+                )
+                ModeTabPill(
+                    label = "TIMER",
+                    count = null,
+                    isSelected = false,
+                    onClick = onOpenSpecialTimer,
+                    modifier = Modifier.weight(1f)
+                )
+                ModeTabPill(
+                    label = "STOPWATCH",
+                    count = null,
+                    isSelected = false,
+                    onClick = onOpenStopwatch,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             // Search Bar
             OutlinedTextField(
@@ -348,6 +393,100 @@ fun RoutineListScreen(
                 routineToSchedule = null
             }
         )
+    }
+
+    // Clear All Data Confirmation Dialog
+    if (showClearDbDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDbDialog = false },
+            title = {
+                Text(
+                    text = "CLEAR DATABASE?",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "This will permanently delete all routines, sessions, and schedules so you can start completely fresh. Are you sure?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllData()
+                        showClearDbDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NothingRed)
+                ) {
+                    Text("Clear All Data", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDbDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ModeTabPill(
+    label: String,
+    count: Int?,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        contentColor = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
+        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        modifier = modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(NothingRed)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp
+                )
+            )
+            if (count != null && count > 0) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "($count)",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                )
+            }
+        }
     }
 }
 

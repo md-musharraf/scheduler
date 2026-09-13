@@ -16,6 +16,7 @@ class RoutineStorage(context: Context) {
         private const val KEY_SCHEDULED = "scheduled_routines_json"
         private const val KEY_INITIALIZED = "is_initialized_v2"
         private const val KEY_THEME_MODE = "theme_mode_key"
+        private const val KEY_DATA_CLEARED = "is_data_cleared_v1"
 
         val DEFAULT_CATEGORIES = listOf(
             RoutineCategory("cat_comm", "Communication Skills", "🎙️", 0xFF8B5CF6),
@@ -247,11 +248,22 @@ class RoutineStorage(context: Context) {
     }
 
     init {
-        if (!prefs.getBoolean(KEY_INITIALIZED, false)) {
+        val isCleared = prefs.getBoolean(KEY_DATA_CLEARED, false)
+        val isInitialized = prefs.getBoolean(KEY_INITIALIZED, false)
+        if (!isInitialized && !isCleared) {
             saveCategories(DEFAULT_CATEGORIES)
-            saveRoutines(DEFAULT_ROUTINES)
+            saveRoutines(emptyList()) // Start with clean empty database
             prefs.edit().putBoolean(KEY_INITIALIZED, true).apply()
         }
+    }
+
+    fun clearAllData() {
+        prefs.edit()
+            .putBoolean(KEY_DATA_CLEARED, true)
+            .putString(KEY_ROUTINES, "[]")
+            .putString(KEY_SESSIONS, "[]")
+            .putString(KEY_SCHEDULED, "[]")
+            .apply()
     }
 
     // Categories
@@ -312,7 +324,11 @@ class RoutineStorage(context: Context) {
 
     // Routines
     fun getRoutines(): List<Routine> {
-        val jsonStr = prefs.getString(KEY_ROUTINES, null) ?: return DEFAULT_ROUTINES
+        val isCleared = prefs.getBoolean(KEY_DATA_CLEARED, false)
+        val jsonStr = prefs.getString(KEY_ROUTINES, null)
+        if (jsonStr == null || jsonStr == "[]" || isCleared && jsonStr.isBlank()) {
+            return emptyList()
+        }
         val list = mutableListOf<Routine>()
         try {
             val arr = JSONArray(jsonStr)
@@ -354,7 +370,7 @@ class RoutineStorage(context: Context) {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            return DEFAULT_ROUTINES
+            return emptyList()
         }
         return list
     }

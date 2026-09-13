@@ -38,7 +38,17 @@ data class RoutineCategory(
     val emoji: String,
     val colorHex: Long,
     val isCustom: Boolean = false
-)
+) {
+    companion object {
+        val DEFAULT_CATEGORIES = listOf(
+            RoutineCategory("cat_comm", "Communication", "🎙️", 0xFF8B5CF6),
+            RoutineCategory("cat_gym", "Workout", "💪", 0xFFEF4444),
+            RoutineCategory("cat_study", "Study", "📚", 0xFF6366F1),
+            RoutineCategory("cat_mindfulness", "Mindfulness", "🧘", 0xFF10B981),
+            RoutineCategory("cat_productivity", "Focus", "⚡", 0xFFF59E0B)
+        )
+    }
+}
 
 data class Routine(
     val id: String = UUID.randomUUID().toString(),

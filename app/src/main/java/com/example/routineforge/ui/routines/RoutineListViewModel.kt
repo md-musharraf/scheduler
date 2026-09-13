@@ -142,5 +142,11 @@ class RoutineListViewModel(
             repository.scheduleRoutine(item)
         }
     }
+
+    fun clearAllData() {
+        viewModelScope.launch {
+            repository.clearAllData()
+        }
+    }
 }
 

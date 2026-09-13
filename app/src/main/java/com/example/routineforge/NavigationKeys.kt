@@ -18,3 +18,9 @@ data object HistoryStatsNav : NavKey
 @Serializable
 data object CalendarNav : NavKey
 
+@Serializable
+data object StopwatchNav : NavKey
+
+@Serializable
+data object SpecialTimerNav : NavKey
+
