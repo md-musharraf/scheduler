@@ -7,6 +7,11 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -254,17 +259,25 @@ fun RoutinePlayerScreen(
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Subtask countdown animated sweep
+                // Subtask countdown animated continuous liquid sweep
                 val animatedStepProgress by animateFloatAsState(
                     targetValue = (1f - uiState.stepProgress).coerceIn(0f, 1f),
-                    animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+                    animationSpec = if (uiState.isPlaying) {
+                        tween(durationMillis = 1000, easing = LinearEasing)
+                    } else {
+                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                    },
                     label = "SubtaskSweep"
                 )
 
-                // Category countdown animated sweep
+                // Category countdown animated continuous liquid sweep
                 val animatedCategoryProgress by animateFloatAsState(
                     targetValue = (1f - uiState.categoryProgress).coerceIn(0f, 1f),
-                    animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+                    animationSpec = if (uiState.isPlaying) {
+                        tween(durationMillis = 1000, easing = LinearEasing)
+                    } else {
+                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                    },
                     label = "CategorySweep"
                 )
 
@@ -361,15 +374,44 @@ fun RoutinePlayerScreen(
                     )
 
                     // Inner Active Arc (Subtask remaining)
+                    val subtaskSweepAngle = 360f * animatedStepProgress
                     drawArc(
                         color = themeColor,
                         startAngle = -90f,
-                        sweepAngle = 360f * animatedStepProgress,
+                        sweepAngle = subtaskSweepAngle,
                         useCenter = false,
                         topLeft = innerTopLeft,
                         size = innerArcSize,
                         style = Stroke(width = innerStroke, cap = StrokeCap.Round)
                     )
+
+                    // Luminous glowing bead at the leading tip of the active subtask arc
+                    if (animatedStepProgress > 0.005f) {
+                        val tipAngleRad = ((-90f + subtaskSweepAngle) * (Math.PI / 180.0)).toFloat()
+                        val innerRadius = innerDiameter / 2f
+                        val beadX = center.x + innerRadius * kotlin.math.cos(tipAngleRad)
+                        val beadY = center.y + innerRadius * kotlin.math.sin(tipAngleRad)
+                        val beadCenter = Offset(beadX, beadY)
+
+                        // Outer luminous aura glow
+                        drawCircle(
+                            color = themeColor.copy(alpha = 0.38f),
+                            radius = 11.dp.toPx(),
+                            center = beadCenter
+                        )
+                        // Radiant core bead
+                        drawCircle(
+                            color = themeColor,
+                            radius = 6.5.dp.toPx(),
+                            center = beadCenter
+                        )
+                        // Brilliant white center highlight
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.dp.toPx(),
+                            center = beadCenter
+                        )
+                    }
                 }
 
                 // Center Digital Chronograph Readout
@@ -393,17 +435,26 @@ fun RoutinePlayerScreen(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Primary Sub-task Countdown Clock
-                    Text(
-                        text = uiState.formattedRemainingTime(),
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 52.sp,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 1.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    // Primary Sub-task Countdown Clock with Smooth Slide Transition
+                    AnimatedContent(
+                        targetState = uiState.formattedRemainingTime(),
+                        transitionSpec = {
+                            (slideInVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { height -> height / 3 } + fadeIn(animationSpec = tween(200)))
+                                .togetherWith(slideOutVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { height -> -height / 3 } + fadeOut(animationSpec = tween(200)))
+                        },
+                        label = "TimerDigitRoll"
+                    ) { formattedTime ->
+                        Text(
+                            text = formattedTime,
+                            style = MaterialTheme.typography.displayMedium.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 52.sp,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
 
                     // Active Step Title
                     Text(
@@ -430,14 +481,22 @@ fun RoutinePlayerScreen(
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontSize = 10.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = "${uiState.formattedCategoryRemainingTime()} left",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = BrandPrimary
+                            AnimatedContent(
+                                targetState = uiState.formattedCategoryRemainingTime(),
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(200))
+                                },
+                                label = "CatTimerRoll"
+                            ) { catTime ->
+                                Text(
+                                    text = "$catTime left",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = BrandPrimary
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }
@@ -594,23 +653,67 @@ fun RoutinePlayerScreen(
                     )
                 }
 
-                // Big Glowing Play / Pause Button
+                // Big Glowing Play / Pause Button with Rotating Aurora Halo
+                val infinitePulse = rememberInfiniteTransition(label = "haloTransition")
+                val haloRotation by infinitePulse.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 3500, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "haloRotation"
+                )
+
                 Box(
-                    modifier = Modifier
-                        .size(76.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(listOf(BrandPrimary, BrandSecondary))
-                        )
-                        .clickable { viewModel.togglePlayPause() },
+                    modifier = Modifier.size(86.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (uiState.isPlaying) "Pause" else "Play",
-                        tint = Color.White,
-                        modifier = Modifier.size(42.dp)
-                    )
+                    if (uiState.isPlaying) {
+                        Canvas(
+                            modifier = Modifier
+                                .size(86.dp)
+                                .graphicsLayer { rotationZ = haloRotation }
+                        ) {
+                            drawCircle(
+                                brush = Brush.sweepGradient(
+                                    listOf(
+                                        BrandPrimary.copy(alpha = 0.6f),
+                                        BrandSecondary.copy(alpha = 0.2f),
+                                        WorkColor.copy(alpha = 0.5f),
+                                        BrandPrimary.copy(alpha = 0.6f)
+                                    )
+                                ),
+                                style = Stroke(width = 3.dp.toPx())
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(74.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(listOf(BrandPrimary, BrandSecondary))
+                            )
+                            .clickable { viewModel.togglePlayPause() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedContent(
+                            targetState = uiState.isPlaying,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(150))
+                            },
+                            label = "PlayPauseMorph"
+                        ) { isPlaying ->
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Next Subtask Step (Skip)
@@ -702,6 +805,12 @@ fun SubtaskQueueCard(
         StepType.PREPARE -> PrepareColor
     }
 
+    val cardScale by animateFloatAsState(
+        targetValue = if (isActive) 1.04f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "SubtaskCardScale"
+    )
+
     ElevatedCard(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.elevatedCardColors(
@@ -713,6 +822,10 @@ fun SubtaskQueueCard(
         ),
         modifier = Modifier
             .width(150.dp)
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+            }
             .border(
                 width = if (isActive) 2.dp else 1.dp,
                 color = when {
