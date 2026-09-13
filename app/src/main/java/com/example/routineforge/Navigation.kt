@@ -23,10 +23,16 @@ import com.example.routineforge.ui.routines.RoutineListScreen
 import com.example.routineforge.ui.routines.RoutineListViewModel
 
 @Composable
-fun MainNavigation() {
+fun MainNavigation(initialRoutineId: String? = null) {
     val context = LocalContext.current
     val repository = remember { RoutineRepository.getInstance(context) }
     val backStack = rememberNavBackStack(RoutineListNav)
+
+    androidx.compose.runtime.LaunchedEffect(initialRoutineId) {
+        if (initialRoutineId != null && backStack.lastOrNull() !is RoutinePlayerNav) {
+            backStack.add(RoutinePlayerNav(initialRoutineId))
+        }
+    }
 
     NavDisplay(
         backStack = backStack,

@@ -71,9 +71,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.routineforge.data.RoutineStep
 import com.example.routineforge.data.StepType
+import com.example.routineforge.theme.NothingRed
+import com.example.routineforge.theme.NothingRedSubtle
 import com.example.routineforge.theme.PrepareColor
 import com.example.routineforge.theme.RestColor
 import com.example.routineforge.theme.WorkColor
+import androidx.compose.ui.text.font.FontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -530,39 +533,102 @@ fun StepEditorDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Step Type:",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                    text = "STEP TYPE // PHASE",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    StepType.values().forEach { type ->
-                        val color = when (type) {
-                            StepType.WORK -> WorkColor
-                            StepType.REST -> RestColor
-                            StepType.PREPARE -> PrepareColor
-                        }
-                        FilterChip(
-                            selected = stepType == type,
-                            onClick = { stepType = type },
-                            label = { Text(type.displayName(), fontSize = 11.sp) },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = color,
-                                selectedLabelColor = Color.White
-                            )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp)
                         )
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val stepOptions = listOf(
+                        Triple(StepType.WORK, "FOCUS", NothingRed),
+                        Triple(StepType.REST, "REST", RestColor),
+                        Triple(StepType.PREPARE, "PREP", PrepareColor)
+                    )
+                    stepOptions.forEach { (type, label, dotColor) ->
+                        val isSelected = stepType == type
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) {
+                                if (type == StepType.WORK) NothingRed else MaterialTheme.colorScheme.onSurface
+                            } else Color.Transparent,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { stepType = type }
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isSelected) {
+                                                if (type == StepType.WORK) Color.White else MaterialTheme.colorScheme.surface
+                                            } else dotColor
+                                        )
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 0.5.sp,
+                                        color = if (isSelected) {
+                                            if (type == StepType.WORK) Color.White else MaterialTheme.colorScheme.surface
+                                        } else MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                Text(
-                    text = "Duration: ${minutes}m ${seconds}s",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "DURATION",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                    Text(
+                        text = "[ ${minutes}m ${seconds}s ]",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = NothingRed
+                        )
+                    )
+                }
                 Spacer(modifier = Modifier.height(6.dp))
 
                 // Quick increment buttons
@@ -574,17 +640,27 @@ fun StepEditorDialog(
                 ) {
                     listOf(15 to "+15s", 30 to "+30s", 60 to "+1m", 300 to "+5m", 600 to "+10m").forEach { (secAdd, label) ->
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.clickable {
-                                val total = minutes * 60 + seconds + secAdd
-                                minutes = total / 60
-                                seconds = total % 60
-                            }
+                            modifier = Modifier
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    val total = minutes * 60 + seconds + secAdd
+                                    minutes = total / 60
+                                    seconds = total % 60
+                                }
                         ) {
                             Text(
                                 text = label,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -644,14 +720,35 @@ fun StepEditorDialog(
                     }
                 },
                 enabled = title.isNotBlank() && totalSeconds > 0,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NothingRed,
+                    contentColor = Color.White,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(if (initialStep != null) "Update Step" else "Add Step")
+                Text(
+                    text = if (initialStep != null) "UPDATE STEP" else "ADD STEP",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(
+                    text = "CANCEL",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
             }
         }
     )

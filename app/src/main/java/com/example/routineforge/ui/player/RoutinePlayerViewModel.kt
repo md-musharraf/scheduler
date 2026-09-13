@@ -8,6 +8,9 @@ import com.example.routineforge.data.Routine
 import com.example.routineforge.data.RoutineRepository
 import com.example.routineforge.data.RoutineStep
 import com.example.routineforge.data.StepType
+import com.example.routineforge.service.RoutineTimerAction
+import com.example.routineforge.service.RoutineTimerController
+import com.example.routineforge.service.RoutineTimerService
 import com.example.routineforge.util.AlertHelper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -111,6 +114,34 @@ class RoutinePlayerViewModel(
 
     init {
         loadRoutine()
+        viewModelScope.launch {
+            RoutineTimerController.actions.collect { action ->
+                when (action) {
+                    RoutineTimerAction.TOGGLE_PLAY_PAUSE -> togglePlayPause()
+                    RoutineTimerAction.NEXT_STEP -> skipToNextStep()
+                    RoutineTimerAction.STOP -> {
+                        pause()
+                        RoutineTimerService.stop(getApplication())
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateNotification(state: RoutinePlayerUiState) {
+        val routine = state.routine ?: return
+        val currentStep = state.currentStep ?: return
+        RoutineTimerService.update(
+            context = getApplication(),
+            routineId = routine.id,
+            subtaskTitle = currentStep.title,
+            subtaskRemainingSec = state.currentStepRemainingSeconds,
+            categoryName = routine.title,
+            stepIndex = state.currentStepIndex,
+            stepTotalCount = routine.steps.size,
+            categoryRemainingSec = state.categoryRemainingSeconds,
+            isPlaying = state.isPlaying
+        )
     }
 
     private fun loadRoutine() {
@@ -143,14 +174,18 @@ class RoutinePlayerViewModel(
 
     fun play() {
         if (_uiState.value.isCompleted) return
-        _uiState.value = _uiState.value.copy(isPlaying = true)
+        val newState = _uiState.value.copy(isPlaying = true)
+        _uiState.value = newState
+        updateNotification(newState)
         startTimerJob()
     }
 
     fun pause() {
-        _uiState.value = _uiState.value.copy(isPlaying = false)
+        val newState = _uiState.value.copy(isPlaying = false)
+        _uiState.value = newState
         timerJob?.cancel()
         timerJob = null
+        updateNotification(newState)
     }
 
     private fun startTimerJob() {
@@ -196,6 +231,7 @@ class RoutinePlayerViewModel(
                     lastTransitionMessage = transitionPrompt,
                     showTransitionBanner = true
                 )
+                updateNotification(_uiState.value)
             } else {
                 // Entire routine fully completed!
                 finishRoutine(routine, newElapsed)
@@ -210,11 +246,13 @@ class RoutinePlayerViewModel(
                 categoryRemainingSeconds = newCatRemaining,
                 totalElapsedSeconds = newElapsed
             )
+            updateNotification(_uiState.value)
         }
     }
 
     private fun finishRoutine(routine: Routine, elapsedSeconds: Int) {
         pause()
+        RoutineTimerService.stop(getApplication())
         alertHelper.playRoutineComplete(_uiState.value.soundEnabled, _uiState.value.vibeEnabled)
         _uiState.value = _uiState.value.copy(
             currentStepRemainingSeconds = 0,
@@ -268,6 +306,7 @@ class RoutinePlayerViewModel(
                 lastTransitionMessage = "Switched to: ${nextStep.title}",
                 showTransitionBanner = true
             )
+            updateNotification(_uiState.value)
         } else {
             finishRoutine(routine, state.totalElapsedSeconds)
         }
@@ -289,6 +328,7 @@ class RoutinePlayerViewModel(
             lastTransitionMessage = "Back to: ${prevStep.title}",
             showTransitionBanner = true
         )
+        updateNotification(_uiState.value)
     }
 
     fun restartCurrentStep() {
@@ -301,6 +341,7 @@ class RoutinePlayerViewModel(
             currentStepTotalSeconds = currentStep.durationSeconds,
             categoryRemainingSeconds = (state.categoryRemainingSeconds + diff).coerceAtMost(state.categoryTotalSeconds)
         )
+        updateNotification(_uiState.value)
     }
 
     fun addSecondsToCurrentStep(secondsToAdd: Int) {
@@ -316,6 +357,7 @@ class RoutinePlayerViewModel(
             categoryRemainingSeconds = updatedCat,
             categoryTotalSeconds = updatedCatTotal
         )
+        updateNotification(_uiState.value)
     }
 
     fun toggleSound() {
@@ -328,6 +370,7 @@ class RoutinePlayerViewModel(
 
     fun resetRoutine() {
         pause()
+        RoutineTimerService.stop(getApplication())
         loadRoutine()
     }
 
@@ -335,6 +378,7 @@ class RoutinePlayerViewModel(
         super.onCleared()
         timerJob?.cancel()
         alertHelper.release()
+        RoutineTimerService.stop(getApplication())
     }
 }
 
