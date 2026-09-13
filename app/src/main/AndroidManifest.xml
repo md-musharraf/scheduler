@@ -31,6 +31,10 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Live background routine and category countdown timer with audio vibration alerts" />
         </service>
+
+        <receiver
+            android:name=".service.RoutineTimerReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

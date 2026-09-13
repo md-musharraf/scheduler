@@ -277,17 +277,6 @@ fun RoutinePlayerScreen(
                     label = "SubtaskSweep"
                 )
 
-                // Category countdown animated continuous liquid sweep
-                val animatedCategoryProgress by animateFloatAsState(
-                    targetValue = (1f - uiState.categoryProgress).coerceIn(0f, 1f),
-                    animationSpec = if (uiState.isPlaying) {
-                        tween(durationMillis = 1000, easing = LinearEasing)
-                    } else {
-                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
-                    },
-                    label = "CategorySweep"
-                )
-
                 // Breathing pulse when active
                 val infiniteTransition = rememberInfiniteTransition(label = "pulse")
                 val pulseScale by infiniteTransition.animateFloat(
@@ -319,8 +308,8 @@ fun RoutinePlayerScreen(
                 ) {
                     val center = Offset(size.width / 2, size.height / 2)
 
-                    // 1. OUTER RING: 60-Dot Chronometer Track + Category Arc
-                    val outerStroke = 4.dp.toPx()
+                    // 1. OUTER RING: 60-Dot Ambient Chronometer Perimeter (Nothing Ndot Style)
+                    val outerStroke = 2.dp.toPx()
                     val outerDiameter = size.minDimension - outerStroke - 12.dp.toPx()
                     val outerTopLeft = Offset((size.width - outerDiameter) / 2, (size.height - outerDiameter) / 2)
                     val outerArcSize = Size(outerDiameter, outerDiameter)
@@ -333,41 +322,37 @@ fun RoutinePlayerScreen(
                         useCenter = false,
                         topLeft = outerTopLeft,
                         size = outerArcSize,
-                        style = Stroke(width = 1.5.dp.toPx())
+                        style = Stroke(width = 1.dp.toPx())
                     )
 
-                    // Outer Active Category Arc
-                    drawArc(
-                        color = if (isDark) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f),
-                        startAngle = -90f,
-                        sweepAngle = 360f * animatedCategoryProgress,
-                        useCenter = false,
-                        topLeft = outerTopLeft,
-                        size = outerArcSize,
-                        style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-                    )
-
-                    // 60-Dot Chronometer Perimeter (Nothing Ndot Style)
+                    // 60-Dot Chronometer Dial Markers (Ambient Watch Face)
                     val dotCount = 60
                     val dotRadius = (outerDiameter / 2) + 7.dp.toPx()
-                    val activeCategoryDots = (animatedCategoryProgress * dotCount).toInt()
                     for (i in 0 until dotCount) {
                         val angle = ((-90f + i * (360f / dotCount)) * (Math.PI / 180f)).toFloat()
                         val dotX = center.x + dotRadius * cos(angle)
                         val dotY = center.y + dotRadius * sin(angle)
+                        val isTop = (i == 0)
+                        val isCardinal = (i % 15 == 0)
                         val isMajor = (i % 5 == 0)
-                        val isDotActive = i <= activeCategoryDots
 
                         val dotColor = when {
-                            isDotActive && isMajor -> NothingRed
-                            isDotActive -> if (isDark) Color.White.copy(alpha = 0.9f) else Color.Black.copy(alpha = 0.9f)
+                            isTop -> NothingRed
+                            isCardinal -> if (isDark) Color.White else Color.Black
                             isMajor -> outlineColor
-                            else -> outlineColor.copy(alpha = 0.3f)
+                            else -> outlineColor.copy(alpha = 0.25f)
+                        }
+
+                        val radius = when {
+                            isTop -> 3.2.dp.toPx()
+                            isCardinal -> 2.2.dp.toPx()
+                            isMajor -> 1.8.dp.toPx()
+                            else -> 1.0.dp.toPx()
                         }
 
                         drawCircle(
                             color = dotColor,
-                            radius = if (isMajor) 2.2.dp.toPx() else 1.2.dp.toPx(),
+                            radius = radius,
                             center = Offset(dotX, dotY)
                         )
                     }

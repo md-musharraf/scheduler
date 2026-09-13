@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.lazy.LazyColumn
@@ -216,11 +217,17 @@ fun RoutineListScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = 680.dp)
+            ) {
             // Stats summary bar
             StatsSummaryBanner(
                 totalRoutines = uiState.routines.size,
@@ -292,6 +299,7 @@ fun RoutineListScreen(
             }
         }
     }
+}
 
 
     // Delete Confirmation Dialog
@@ -375,6 +383,7 @@ fun StatsSummaryBanner(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .weight(1f)
+                    .padding(end = 8.dp)
                     .clickable { onOpenHistory() }
             ) {
                 Box(
@@ -383,29 +392,37 @@ fun StatsSummaryBanner(
                         .clip(CircleShape)
                         .background(NothingRed)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "$totalRoutines PROTOCOLS ACTIVE",
+                        text = "$totalRoutines PROTOCOLS",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp,
+                            fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     Text(
                         text = if (completedSessions > 0) "$completedSessions SESSIONS FINISHED" else "SYS // READY",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -414,29 +431,27 @@ fun StatsSummaryBanner(
                         .clickable { onOpenCalendar() }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             Icons.Filled.CalendarMonth,
                             contentDescription = null,
-                            modifier = Modifier.size(13.dp),
+                            modifier = Modifier.size(12.dp),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "CALENDAR",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
+                                fontSize = 9.5.sp
                             ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.width(6.dp))
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
@@ -450,10 +465,10 @@ fun StatsSummaryBanner(
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
+                            fontSize = 9.5.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
                     )
                 }
             }
@@ -623,13 +638,18 @@ fun RoutineCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 category?.let {
-                    NothingPillTag(
-                        text = it.name.uppercase(),
-                        leadingDotColor = NothingRed
-                    )
+                    Box(modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
+                        NothingPillTag(
+                            text = it.name.uppercase(),
+                            leadingDotColor = NothingRed
+                        )
+                    }
                 } ?: Spacer(modifier = Modifier.width(1.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
                     IconButton(
                         onClick = onSchedule,
                         modifier = Modifier.size(32.dp)
@@ -705,9 +725,11 @@ fun RoutineCard(
             NothingDottedDivider()
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Steps overview chips
+            // Steps overview chips (Responsive horizontal scroll)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -757,7 +779,9 @@ fun RoutineCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "START PROTOCOL // COUNTDOWN",
+                    text = "START PROTOCOL",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,

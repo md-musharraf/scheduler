@@ -36,7 +36,7 @@ object RoutineTimerController {
 class RoutineTimerService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "routine_timer_channel"
+        const val CHANNEL_ID = "routine_timer_channel_v2"
         const val NOTIFICATION_ID = 1001
 
         const val ACTION_START_OR_UPDATE = "com.example.routineforge.action.START_OR_UPDATE"
@@ -196,10 +196,10 @@ class RoutineTimerService : Service() {
         )
 
         // Action: Play / Pause
-        val playPauseIntent = Intent(this, RoutineTimerService::class.java).apply {
+        val playPauseIntent = Intent(this, RoutineTimerReceiver::class.java).apply {
             action = ACTION_PLAY_PAUSE
         }
-        val pendingPlayPause = PendingIntent.getService(
+        val pendingPlayPause = PendingIntent.getBroadcast(
             this,
             1,
             playPauseIntent,
@@ -207,10 +207,10 @@ class RoutineTimerService : Service() {
         )
 
         // Action: Next Step
-        val nextIntent = Intent(this, RoutineTimerService::class.java).apply {
+        val nextIntent = Intent(this, RoutineTimerReceiver::class.java).apply {
             action = ACTION_NEXT
         }
-        val pendingNext = PendingIntent.getService(
+        val pendingNext = PendingIntent.getBroadcast(
             this,
             2,
             nextIntent,
@@ -218,10 +218,10 @@ class RoutineTimerService : Service() {
         )
 
         // Action: Stop
-        val stopIntent = Intent(this, RoutineTimerService::class.java).apply {
+        val stopIntent = Intent(this, RoutineTimerReceiver::class.java).apply {
             action = ACTION_STOP
         }
-        val pendingStop = PendingIntent.getService(
+        val pendingStop = PendingIntent.getBroadcast(
             this,
             3,
             stopIntent,
@@ -234,33 +234,37 @@ class RoutineTimerService : Service() {
             null
         }
 
+        val remoteViews = android.widget.RemoteViews(packageName, R.layout.notification_timer_layout).apply {
+            setTextViewText(R.id.notif_timer_text, subtaskTimeStr)
+            setTextViewText(R.id.notif_subtask_title, subtaskTitle)
+            setTextViewText(R.id.notif_category_info, "$categoryName • Step ${stepIndex + 1}/$stepTotalCount ($catTimeStr Left)")
+            setImageViewResource(
+                R.id.notif_btn_play_pause,
+                if (isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
+            )
+            setOnClickPendingIntent(R.id.notif_btn_play_pause, pendingPlayPause)
+            setOnClickPendingIntent(R.id.notif_btn_next, pendingNext)
+            setOnClickPendingIntent(R.id.notif_btn_stop, pendingStop)
+        }
+
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_timer)
             .setContentTitle(titleText)
             .setContentText(contentText)
             .setSubText("ROUTINEFORGE // PROTOCOL")
             .setContentIntent(pendingTapIntent)
+            .setCustomContentView(remoteViews)
+            .setCustomBigContentView(remoteViews)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setOngoing(isPlaying)
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
             .setColor(0xFFD71921.toInt()) // Nothing Red accent
             .setColorized(false)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
-
-        if (largeIconBitmap != null) {
-            builder.setLargeIcon(largeIconBitmap)
-        }
-
-        // Add actions
-        if (isPlaying) {
-            builder.addAction(R.drawable.ic_notif_pause, "PAUSE", pendingPlayPause)
-        } else {
-            builder.addAction(R.drawable.ic_notif_play, "RESUME", pendingPlayPause)
-        }
-        builder.addAction(R.drawable.ic_notif_next, "NEXT >>", pendingNext)
-        builder.addAction(R.drawable.ic_notif_stop, "STOP", pendingStop)
 
         return builder.build()
     }
@@ -270,7 +274,7 @@ class RoutineTimerService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Active Routine Timer",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Shows live subtask and category countdown timers with controls"
                 setShowBadge(false)
