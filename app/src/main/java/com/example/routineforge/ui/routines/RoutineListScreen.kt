@@ -377,11 +377,12 @@ fun RoutineListScreen(
     // Quick Schedule Dialog
     if (routineToSchedule != null) {
         val routine = routineToSchedule!!
+        val context = androidx.compose.ui.platform.LocalContext.current
         QuickScheduleDialog(
             routine = routine,
             onDismiss = { routineToSchedule = null },
             onConfirm = { dateEpochDay, timeStr ->
-                viewModel.scheduleRoutine(routine, dateEpochDay, timeStr)
+                viewModel.scheduleRoutine(context, routine, dateEpochDay, timeStr)
                 routineToSchedule = null
             }
         )

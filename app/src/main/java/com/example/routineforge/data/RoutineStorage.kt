@@ -537,13 +537,17 @@ class RoutineStorage(context: Context) {
                 list.add(
                     ScheduledRoutine(
                         id = obj.getString("id"),
-                        routineId = obj.getString("routineId"),
+                        routineId = obj.optString("routineId", ""),
                         routineTitle = obj.optString("routineTitle", "Routine"),
                         categoryName = obj.optString("categoryName", "General"),
                         categoryEmoji = obj.optString("categoryEmoji", "🎯"),
                         categoryColorHex = obj.optLong("categoryColorHex", 0xFF6366F1),
                         dateEpochDay = obj.getLong("dateEpochDay"),
                         timeOfDay = obj.optString("timeOfDay", "09:00"),
+                        durationMinutes = obj.optInt("durationMinutes", 30),
+                        remindBeforeMinutes = obj.optInt("remindBeforeMinutes", 1),
+                        remindAtTime = obj.optBoolean("remindAtTime", true),
+                        vibrationPattern = obj.optString("vibrationPattern", "NOTHING_PULSE"),
                         isCompleted = obj.optBoolean("isCompleted", false),
                         createdAt = obj.optLong("createdAt", System.currentTimeMillis())
                     )
@@ -568,6 +572,10 @@ class RoutineStorage(context: Context) {
                 put("categoryColorHex", r.categoryColorHex)
                 put("dateEpochDay", r.dateEpochDay)
                 put("timeOfDay", r.timeOfDay)
+                put("durationMinutes", r.durationMinutes)
+                put("remindBeforeMinutes", r.remindBeforeMinutes)
+                put("remindAtTime", r.remindAtTime)
+                put("vibrationPattern", r.vibrationPattern)
                 put("isCompleted", r.isCompleted)
                 put("createdAt", r.createdAt)
             }

@@ -98,6 +98,31 @@ class AlertHelper(private val context: Context) {
     }
 
 
+    fun testVibrationPattern(patternName: String) {
+        try {
+            val (timings, amplitudes) = when (patternName) {
+                "STEADY_BUZZ" -> Pair(longArrayOf(0, 600), intArrayOf(0, 255))
+                "TRIPLE_TAP" -> Pair(
+                    longArrayOf(0, 180, 80, 180, 80, 180),
+                    intArrayOf(0, 255, 0, 255, 0, 255)
+                )
+                else -> Pair(
+                    longArrayOf(0, 300, 120, 300),
+                    intArrayOf(0, 255, 0, 255)
+                )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+                vibrator?.vibrate(effect)
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(timings, -1)
+            }
+        } catch (e: Exception) {
+            vibrate(400L)
+        }
+    }
+
     private fun vibrate(milliseconds: Long) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

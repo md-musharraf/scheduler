@@ -103,14 +103,28 @@ data class CompletedSession(
 
 data class ScheduledRoutine(
     val id: String = UUID.randomUUID().toString(),
-    val routineId: String,
+    val routineId: String = "",
     val routineTitle: String = "",
     val categoryName: String = "General",
     val categoryEmoji: String = "🎯",
     val categoryColorHex: Long = 0xFF6366F1,
     val dateEpochDay: Long, // LocalDate.toEpochDay()
     val timeOfDay: String = "09:00", // e.g. "07:00", "18:30"
+    val durationMinutes: Int = 30, // Default duration in minutes
+    val remindBeforeMinutes: Int = 1, // Alert 1 min before (as requested)
+    val remindAtTime: Boolean = true, // Alert at exact scheduled time
+    val vibrationPattern: String = "NOTHING_PULSE", // NOTHING_PULSE, STEADY_BUZZ, TRIPLE_TAP
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    fun formattedDuration(): String {
+        val hours = durationMinutes / 60
+        val mins = durationMinutes % 60
+        return when {
+            hours > 0 && mins > 0 -> "${hours}h ${mins}m"
+            hours > 0 -> "${hours}h"
+            else -> "${mins}m"
+        }
+    }
+}
 

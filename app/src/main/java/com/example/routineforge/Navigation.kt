@@ -130,8 +130,9 @@ fun MainNavigation(
                 }
 
                 entry<CalendarNav> {
+                    val application = context.applicationContext as Application
                     val viewModel: CalendarViewModel = viewModel {
-                        CalendarViewModel(repository)
+                        CalendarViewModel(application, repository)
                     }
                     CalendarScreen(
                         viewModel = viewModel,

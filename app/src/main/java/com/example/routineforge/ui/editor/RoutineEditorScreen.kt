@@ -72,12 +72,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.routineforge.data.RoutineStep
 import com.example.routineforge.data.StepType
+import com.example.routineforge.theme.NothingPillTag
 import com.example.routineforge.theme.NothingRed
 import com.example.routineforge.theme.NothingRedSubtle
 import com.example.routineforge.theme.PrepareColor
 import com.example.routineforge.theme.RestColor
 import com.example.routineforge.theme.WorkColor
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.material.icons.filled.Bolt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -262,89 +264,290 @@ fun RoutineEditorScreen(
                 }
             }
 
-            // Steps Header & Summary
+            // Routine Structure Mode Card (Simple Focus vs Structured Steps)
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
                 ) {
-                    Column {
-                        Text(
-                            text = "Routine Steps (${uiState.steps.size})",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = "Total Duration: ${uiState.formattedDuration}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "// ROUTINE ARCHITECTURE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NothingRed
+                                )
+                            )
+                            NothingPillTag(
+                                text = if (uiState.isSimpleMode) "NO SUB-STEPS" else "MULTI-STEP",
+                                isHighlight = true,
+                                leadingDotColor = NothingRed
+                            )
+                        }
 
-                    Button(
-                        onClick = { isAddingNewStep = true },
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add Step")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .padding(4.dp)
+                        ) {
+                            // Option 1: Simple Mode (No sub-steps required)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(if (uiState.isSimpleMode) NothingRed else Color.Transparent)
+                                    .clickable { viewModel.setSimpleMode(true) }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "⚡ SIMPLE FOCUS",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = if (uiState.isSimpleMode) Color.White else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    )
+                                    Text(
+                                        text = "Only Category • No Sub-steps",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            color = if (uiState.isSimpleMode) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                }
+                            }
+
+                            // Option 2: Structured Steps
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(if (!uiState.isSimpleMode) NothingRed else Color.Transparent)
+                                    .clickable { viewModel.setSimpleMode(false) }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "🪜 STRUCTURED",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = if (!uiState.isSimpleMode) Color.White else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    )
+                                    Text(
+                                        text = "Step-by-Step Intervals",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            color = if (!uiState.isSimpleMode) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            // Empty Steps State
-            if (uiState.steps.isEmpty()) {
+            if (uiState.isSimpleMode) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                Icons.Outlined.Timer,
-                                contentDescription = null,
-                                modifier = Modifier.size(36.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "No steps added yet",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                                text = "Continuous Focus Duration",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Text(
-                                text = "Add intervals like 'Warmup', 'Exercise 1', or 'Study Session'",
+                                text = "Total session time: ${uiState.formattedDuration}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedButton(
-                                onClick = { isAddingNewStep = true },
-                                shape = RoundedCornerShape(10.dp)
+
+                            val durationPresets = listOf(15, 25, 30, 45, 60, 90, 120)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("+ Add First Step")
+                                durationPresets.forEach { mins ->
+                                    FilterChip(
+                                        selected = uiState.simpleDurationMinutes == mins,
+                                        onClick = { viewModel.updateSimpleDurationMinutes(mins) },
+                                        label = {
+                                            Text(
+                                                if (mins == 25) "25m (Pomodoro)" else if (mins >= 60) "${mins / 60}h" else "${mins}m",
+                                                fontWeight = if (uiState.simpleDurationMinutes == mins) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                }
+                            }
+
+                            // Stepper (-5m / +5m)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(
+                                    onClick = { viewModel.updateSimpleDurationMinutes(uiState.simpleDurationMinutes - 5) },
+                                    enabled = uiState.simpleDurationMinutes > 5,
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("- 5 min")
+                                }
+
+                                Text(
+                                    text = "${uiState.simpleDurationMinutes} MINS",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NothingRed
+                                    )
+                                )
+
+                                OutlinedButton(
+                                    onClick = { viewModel.updateSimpleDurationMinutes(uiState.simpleDurationMinutes + 5) },
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("+ 5 min")
+                                }
+                            }
+
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "💡 Subcategories are completely optional. This routine will run as a smooth, non-stop focus timer without pausing between sub-steps.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(12.dp)
+                                )
                             }
                         }
                     }
                 }
             } else {
-                itemsIndexed(uiState.steps, key = { _, step -> step.id }) { index, step ->
-                    StepItemCard(
-                        step = step,
-                        index = index,
-                        totalSteps = uiState.steps.size,
-                        onMoveUp = { viewModel.moveStepUp(index) },
-                        onMoveDown = { viewModel.moveStepDown(index) },
-                        onEdit = { stepToEdit = step },
-                        onDelete = { viewModel.deleteStep(step.id) }
-                    )
+                // Steps Header & Summary
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Routine Steps (${uiState.steps.size})",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "Total Duration: ${uiState.formattedDuration}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Button(
+                            onClick = { isAddingNewStep = true },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Step")
+                        }
+                    }
+                }
+
+                // Empty Steps State
+                if (uiState.steps.isEmpty()) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Timer,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "No sub-steps added",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                                )
+                                Text(
+                                    text = "You can add interval steps, or save directly as a 30m continuous routine!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.setSimpleMode(true) },
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("⚡ Use Simple Mode")
+                                    }
+                                    Button(
+                                        onClick = { isAddingNewStep = true },
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("+ Add Step")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    itemsIndexed(uiState.steps, key = { _, step -> step.id }) { index, step ->
+                        StepItemCard(
+                            step = step,
+                            index = index,
+                            totalSteps = uiState.steps.size,
+                            onMoveUp = { viewModel.moveStepUp(index) },
+                            onMoveDown = { viewModel.moveStepDown(index) },
+                            onEdit = { stepToEdit = step },
+                            onDelete = { viewModel.deleteStep(step.id) }
+                        )
+                    }
                 }
             }
         }

@@ -73,6 +73,42 @@ class RoutineRepository(private val storage: RoutineStorage) {
         _routines.value.firstOrNull { it.id == id } ?: storage.getRoutineById(id)
     }
 
+    fun getOrCreateRoutineForScheduledTask(scheduled: ScheduledRoutine): Routine = synchronized(lock) {
+        if (scheduled.routineId.isNotBlank()) {
+            val found = getRoutine(scheduled.routineId)
+            if (found != null) return found
+        }
+        val existingTitleMatch = _routines.value.firstOrNull {
+            it.title.equals(scheduled.routineTitle, ignoreCase = true)
+        }
+        if (existingTitleMatch != null) return existingTitleMatch
+
+        // Auto-generate a clean 1-step routine for direct category tasks
+        val categoryId = _categories.value.firstOrNull {
+            it.name.equals(scheduled.categoryName, ignoreCase = true)
+        }?.id ?: (_categories.value.firstOrNull()?.id ?: "cat_study")
+
+        val durationSec = (if (scheduled.durationMinutes > 0) scheduled.durationMinutes else 30) * 60
+        val singleStep = RoutineStep(
+            id = java.util.UUID.randomUUID().toString(),
+            title = scheduled.routineTitle.ifBlank { scheduled.categoryName },
+            durationSeconds = durationSec,
+            stepType = StepType.WORK,
+            instruction = "Scheduled focus session: ${scheduled.categoryEmoji} ${scheduled.categoryName}"
+        )
+        val synthesizedRoutine = Routine(
+            id = if (scheduled.routineId.isNotBlank()) scheduled.routineId else java.util.UUID.randomUUID().toString(),
+            title = scheduled.routineTitle.ifBlank { scheduled.categoryName },
+            description = "Calendar Protocol • ${scheduled.categoryName}",
+            categoryId = categoryId,
+            colorHex = scheduled.categoryColorHex,
+            iconName = "timer",
+            steps = listOf(singleStep)
+        )
+        saveRoutine(synthesizedRoutine)
+        synthesizedRoutine
+    }
+
     fun logSession(session: CompletedSession) = synchronized(lock) {
         storage.saveCompletedSession(session)
         _sessions.value = storage.getCompletedSessions()

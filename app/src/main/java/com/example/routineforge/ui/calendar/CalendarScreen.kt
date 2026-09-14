@@ -21,20 +21,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,6 +65,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -77,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.routineforge.data.CompletedSession
 import com.example.routineforge.data.Routine
+import com.example.routineforge.data.RoutineCategory
 import com.example.routineforge.data.ScheduledRoutine
 import com.example.routineforge.theme.BrandPrimary
 import com.example.routineforge.theme.BrandSecondary
@@ -430,9 +436,13 @@ fun CalendarScreen(
                 items(uiState.scheduledForSelectedDate, key = { it.id }) { scheduled ->
                     ScheduledRoutineCard(
                         item = scheduled,
-                        onStart = { onStartRoutine(scheduled.routineId) },
+                        onStart = {
+                            val routineId = viewModel.startScheduledTask(scheduled)
+                            onStartRoutine(routineId)
+                        },
                         onToggleCompleted = { viewModel.toggleScheduledCompleted(scheduled.id) },
-                        onDelete = { viewModel.deleteScheduledRoutine(scheduled.id) }
+                        onDelete = { viewModel.deleteScheduledRoutine(scheduled.id) },
+                        onTestVibration = { viewModel.testVibrationPattern(scheduled.vibrationPattern) }
                     )
                 }
             }
@@ -459,11 +469,38 @@ fun CalendarScreen(
     if (showScheduleDialog) {
         ScheduleRoutineDialog(
             availableRoutines = uiState.availableRoutines,
+            availableCategories = uiState.availableCategories,
             initialDate = uiState.selectedDate,
             onDismiss = { showScheduleDialog = false },
-            onSchedule = { routine, date, timeStr ->
-                viewModel.scheduleRoutine(routine, date, timeStr)
+            onScheduleCategoryTask = { title, category, date, timeStr, durationMinutes, remindBeforeMinutes, remindAtTime, vibrationPattern ->
+                viewModel.scheduleCategoryTask(
+                    taskTitle = title,
+                    category = category,
+                    date = date,
+                    timeStr = timeStr,
+                    durationMinutes = durationMinutes,
+                    remindBeforeMinutes = remindBeforeMinutes,
+                    remindAtTime = remindAtTime,
+                    vibrationPattern = vibrationPattern
+                )
                 showScheduleDialog = false
+            },
+            onScheduleRoutine = { routine, date, timeStr, remindBeforeMinutes, remindAtTime, vibrationPattern ->
+                viewModel.scheduleRoutine(
+                    routine = routine,
+                    date = date,
+                    timeStr = timeStr,
+                    remindBeforeMinutes = remindBeforeMinutes,
+                    remindAtTime = remindAtTime,
+                    vibrationPattern = vibrationPattern
+                )
+                showScheduleDialog = false
+            },
+            onAddCategory = { name, emoji, colorHex ->
+                viewModel.addCustomCategory(name, emoji, colorHex)
+            },
+            onTestVibration = { pattern ->
+                viewModel.testVibrationPattern(pattern)
             }
         )
     }
@@ -654,7 +691,8 @@ fun ScheduledRoutineCard(
     item: ScheduledRoutine,
     onStart: () -> Unit,
     onToggleCompleted: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onTestVibration: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -687,16 +725,22 @@ fun ScheduledRoutineCard(
 
                 // Routine Title & Category Badge
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.routineTitle,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${item.categoryEmoji} ",
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = item.routineTitle,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = if (item.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = item.categoryName.uppercase(),
@@ -705,6 +749,19 @@ fun ScheduledRoutineCard(
                             fontWeight = FontWeight.SemiBold,
                             color = NothingRed
                         )
+                    )
+                }
+
+                // Vibration Test Quick Button
+                IconButton(
+                    onClick = onTestVibration,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Vibration,
+                        contentDescription = "Test Vibration",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(17.dp)
                     )
                 }
 
@@ -726,10 +783,12 @@ fun ScheduledRoutineCard(
             NothingDottedDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Bottom row: Time badge & Start Button
+            // Badges row: Time badge, duration, reminder badge
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 NothingPillTag(
@@ -737,6 +796,40 @@ fun ScheduledRoutineCard(
                     isHighlight = true
                 )
 
+                NothingPillTag(
+                    text = "[ ${item.formattedDuration()} ]",
+                    isHighlight = false
+                )
+
+                if (item.remindBeforeMinutes > 0 && item.remindAtTime) {
+                    NothingPillTag(
+                        text = "📳 ${item.remindBeforeMinutes}M PRE + ON-TIME",
+                        isHighlight = true,
+                        leadingDotColor = NothingRed
+                    )
+                } else if (item.remindBeforeMinutes > 0) {
+                    NothingPillTag(
+                        text = "📳 ${item.remindBeforeMinutes}M PRE",
+                        isHighlight = true,
+                        leadingDotColor = NothingRed
+                    )
+                } else if (item.remindAtTime) {
+                    NothingPillTag(
+                        text = "📳 ON-TIME",
+                        isHighlight = true,
+                        leadingDotColor = NothingRed
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Bottom row: Start Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Button(
                     onClick = onStart,
                     shape = RoundedCornerShape(10.dp),
@@ -762,9 +855,9 @@ fun ScheduledRoutineCard(
                         )
                     )
                 }
+            }
         }
     }
-}
 }
 
 @Composable
@@ -839,126 +932,592 @@ fun CompletedDaySessionCard(session: CompletedSession) {
 @Composable
 fun ScheduleRoutineDialog(
     availableRoutines: List<Routine>,
+    availableCategories: List<RoutineCategory>,
     initialDate: LocalDate,
     onDismiss: () -> Unit,
-    onSchedule: (Routine, LocalDate, String) -> Unit
+    onScheduleCategoryTask: (
+        title: String,
+        category: RoutineCategory,
+        date: LocalDate,
+        timeStr: String,
+        durationMinutes: Int,
+        remindBeforeMinutes: Int,
+        remindAtTime: Boolean,
+        vibrationPattern: String
+    ) -> Unit,
+    onScheduleRoutine: (
+        routine: Routine,
+        date: LocalDate,
+        timeStr: String,
+        remindBeforeMinutes: Int,
+        remindAtTime: Boolean,
+        vibrationPattern: String
+    ) -> Unit,
+    onAddCategory: (name: String, emoji: String, colorHex: Long) -> RoutineCategory,
+    onTestVibration: (pattern: String) -> Unit
 ) {
+    // 0 = Quick Category Task (Default - no routine or sub-step required!), 1 = Saved Routine
+    var scheduleMode by remember { mutableIntStateOf(0) }
+    var taskTitle by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf(availableCategories.firstOrNull()) }
     var selectedRoutine by remember { mutableStateOf(availableRoutines.firstOrNull()) }
+
     var timeOfDay by remember { mutableStateOf("09:00") }
     var selectedDate by remember { mutableStateOf(initialDate) }
+    var durationMinutes by remember { mutableIntStateOf(30) }
 
-    val quickTimes = listOf("07:00", "09:00", "14:00", "18:00", "21:00")
+    // Vibrations & Reminders (User requirement: 1 min before + at time)
+    var remindBeforeEnabled by remember { mutableStateOf(true) }
+    var remindBeforeMinutes by remember { mutableIntStateOf(1) }
+    var remindAtTime by remember { mutableStateOf(true) }
+    var vibrationPattern by remember { mutableStateOf("NOTHING_PULSE") }
+
+    // Inline Add Category state
+    var showAddCategory by remember { mutableStateOf(false) }
+    var newCatName by remember { mutableStateOf("") }
+    var newCatEmoji by remember { mutableStateOf("⚡") }
+    var newCatColor by remember { mutableStateOf(0xFFEF4444) }
+
+    val quickTimes = listOf("07:00", "08:00", "09:00", "14:00", "18:00", "21:00")
+    val durationOptions = listOf(15, 30, 45, 60, 90, 120)
+    val leadTimeOptions = listOf(1, 3, 5, 10, 15)
+    val emojiOptions = listOf("⚡", "💪", "📚", "🎙️", "🧘", "💻", "🎯", "🚀", "🔥")
+    val colorOptions = listOf(0xFFEF4444, 0xFF6366F1, 0xFF06B6D4, 0xFF10B981, 0xFFF59E0B, 0xFF8B5CF6, 0xFFEC4899)
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.padding(vertical = 12.dp),
         title = {
-            Text(
-                text = "Plan & Schedule Routine",
-                fontWeight = FontWeight.Bold
-            )
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Schedule,
+                            contentDescription = null,
+                            tint = NothingRed,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "PLAN PROTOCOL",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Scheduled for ${selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Select Routine:",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Segmented Mode Switcher: Quick Category Task vs Saved Routine
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (scheduleMode == 0) NothingRed else Color.Transparent)
+                            .clickable { scheduleMode = 0 }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Bolt,
+                                contentDescription = null,
+                                tint = if (scheduleMode == 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "CATEGORY",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = if (scheduleMode == 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+                    }
 
-                if (availableRoutines.isEmpty()) {
-                    Text(text = "No routines available. Please create a routine first.")
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        availableRoutines.forEach { routine ->
-                            Row(
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(if (scheduleMode == 1) NothingRed else Color.Transparent)
+                            .clickable { scheduleMode = 1 }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ROUTINE",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = if (scheduleMode == 1) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                }
+
+                if (scheduleMode == 0) {
+                    // MODE 0: QUICK CATEGORY TASK (NO SUB-CATEGORY REQUIRED)
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = taskTitle,
+                            onValueChange = { taskTitle = it },
+                            label = { Text("Task Title (e.g. Chest Workout, DSA)") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Category Selection Row with Inline "+ New Cat" button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Select Category:",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            TextButton(
+                                onClick = { showAddCategory = !showAddCategory },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = NothingRed)
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(if (showAddCategory) "Close" else "+ New Cat", fontSize = 11.sp, color = NothingRed)
+                            }
+                        }
+
+                        // Inline Category Creator Card
+                        if (showAddCategory) {
+                            Card(
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (selectedRoutine?.id == routine.id) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                    )
-                                    .clickable { selectedRoutine = routine }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                             ) {
-                                RadioButton(
-                                    selected = selectedRoutine?.id == routine.id,
-                                    onClick = { selectedRoutine = routine }
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        text = "// CREATE NEW CATEGORY",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NothingRed
+                                        )
+                                    )
+                                    OutlinedTextField(
+                                        value = newCatName,
+                                        onValueChange = { newCatName = it },
+                                        label = { Text("Category Name") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    // Emoji Picker
+                                    Text(text = "Choose Emoji:", style = MaterialTheme.typography.labelSmall)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        emojiOptions.forEach { em ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(if (newCatEmoji == em) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                                    .clickable { newCatEmoji = em },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(em, fontSize = 16.sp)
+                                            }
+                                        }
+                                    }
+
+                                    // Color Picker
+                                    Text(text = "Choose Color:", style = MaterialTheme.typography.labelSmall)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        colorOptions.forEach { col ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(26.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(col))
+                                                    .border(
+                                                        width = if (newCatColor == col) 2.dp else 0.dp,
+                                                        color = if (newCatColor == col) Color.White else Color.Transparent,
+                                                        shape = CircleShape
+                                                    )
+                                                    .clickable { newCatColor = col }
+                                            )
+                                        }
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            if (newCatName.isNotBlank()) {
+                                                val created = onAddCategory(newCatName, newCatEmoji, newCatColor)
+                                                selectedCategory = created
+                                                newCatName = ""
+                                                showAddCategory = false
+                                            }
+                                        },
+                                        enabled = newCatName.isNotBlank(),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Save & Select Category")
+                                    }
+                                }
+                            }
+                        }
+
+                        // Category Chips Horizontal Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            availableCategories.forEach { cat ->
+                                FilterChip(
+                                    selected = selectedCategory?.id == cat.id,
+                                    onClick = { selectedCategory = cat },
+                                    label = { Text("${cat.emoji} ${cat.name}", fontSize = 12.sp) },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(cat.colorHex),
+                                        selectedLabelColor = Color.White
+                                    )
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
+                            }
+                        }
+
+                        // Duration Chips
+                        Text(
+                            text = "Estimated Duration:",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            durationOptions.forEach { mins ->
+                                FilterChip(
+                                    selected = durationMinutes == mins,
+                                    onClick = { durationMinutes = mins },
+                                    label = { Text(if (mins >= 60) "${mins / 60}h" else "${mins}m", fontSize = 11.sp) },
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // MODE 1: PICK EXISTING ROUTINE
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Select Routine:",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+
+                        if (availableRoutines.isEmpty()) {
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
                                     Text(
-                                        text = routine.title,
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                                        text = "No saved routines found.",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
                                     )
                                     Text(
-                                        text = "${routine.steps.size} steps • ${routine.formattedDuration}",
+                                        text = "Switch to 'CATEGORY' above to plan tasks without creating a routine!",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = NothingRed
                                     )
+                                }
+                            }
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                availableRoutines.forEach { routine ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                if (selectedRoutine?.id == routine.id) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                            )
+                                            .clickable { selectedRoutine = routine }
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = selectedRoutine?.id == routine.id,
+                                            onClick = { selectedRoutine = routine }
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column {
+                                            Text(
+                                                text = routine.title,
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                            Text(
+                                                text = "${routine.steps.size} steps • ${routine.formattedDuration}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                // TIME SELECTION
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Scheduled Time (HH:mm):",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
 
-                Text(
-                    text = "Scheduled Time (HH:mm):",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Quick time chips
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    quickTimes.forEach { qTime ->
-                        FilterChip(
-                            selected = timeOfDay == qTime,
-                            onClick = { timeOfDay = qTime },
-                            label = { Text(qTime, fontSize = 11.sp) },
-                            shape = RoundedCornerShape(10.dp)
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickTimes.forEach { qTime ->
+                            FilterChip(
+                                selected = timeOfDay == qTime,
+                                onClick = { timeOfDay = qTime },
+                                label = { Text(qTime, fontSize = 11.sp) },
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
                     }
+
+                    OutlinedTextField(
+                        value = timeOfDay,
+                        onValueChange = { timeOfDay = it },
+                        label = { Text("Custom Time (HH:mm, e.g. 07:30)") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                // VIBRATION & REMINDER PROTOCOL CARD (FULL CUSTOMIZATION)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "// VIBRATION & REMINDER ALERTS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NothingRed
+                                )
+                            )
 
-                OutlinedTextField(
-                    value = timeOfDay,
-                    onValueChange = { timeOfDay = it },
-                    label = { Text("Custom Time (e.g. 07:30, 18:00)") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                            // Quick test button
+                            TextButton(
+                                onClick = { onTestVibration(vibrationPattern) },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                            ) {
+                                Icon(Icons.Filled.Vibration, contentDescription = null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Test Vibe", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                        // Reminder 1: Pre-alert (Vibrate 1 min before - user requested!)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = remindBeforeEnabled,
+                                onCheckedChange = { remindBeforeEnabled = it },
+                                colors = CheckboxDefaults.colors(checkedColor = NothingRed)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Vibrate Advance Pre-Alert",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Haptic buzz $remindBeforeMinutes min before task starts",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
-                Text(
-                    text = "Scheduled For: ${selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                        if (remindBeforeEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                leadTimeOptions.forEach { lt ->
+                                    FilterChip(
+                                        selected = remindBeforeMinutes == lt,
+                                        onClick = { remindBeforeMinutes = lt },
+                                        label = { Text("${lt}m before", fontSize = 10.sp) },
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Reminder 2: At-time alert
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = remindAtTime,
+                                onCheckedChange = { remindAtTime = it },
+                                colors = CheckboxDefaults.colors(checkedColor = NothingRed)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Vibrate At Start Time",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Authoritative haptic vibration when task begins",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Vibration Pattern Selector
+                        Text(
+                            text = "Vibration Pattern:",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(
+                                "NOTHING_PULSE" to "Nothing Pulse",
+                                "STEADY_BUZZ" to "Steady Buzz",
+                                "TRIPLE_TAP" to "Triple Tap"
+                            ).forEach { (key, label) ->
+                                FilterChip(
+                                    selected = vibrationPattern == key,
+                                    onClick = {
+                                        vibrationPattern = key
+                                        onTestVibration(key)
+                                    },
+                                    label = { Text(label, fontSize = 10.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    selectedRoutine?.let { routine ->
-                        onSchedule(routine, selectedDate, timeOfDay)
+                    val preMin = if (remindBeforeEnabled) remindBeforeMinutes else 0
+                    if (scheduleMode == 0) {
+                        val cat = selectedCategory ?: availableCategories.firstOrNull()
+                        if (cat != null) {
+                            onScheduleCategoryTask(
+                                taskTitle,
+                                cat,
+                                selectedDate,
+                                timeOfDay,
+                                durationMinutes,
+                                preMin,
+                                remindAtTime,
+                                vibrationPattern
+                            )
+                        }
+                    } else {
+                        selectedRoutine?.let { routine ->
+                            onScheduleRoutine(
+                                routine,
+                                selectedDate,
+                                timeOfDay,
+                                preMin,
+                                remindAtTime,
+                                vibrationPattern
+                            )
+                        }
                     }
                 },
-                enabled = selectedRoutine != null,
-                shape = RoundedCornerShape(10.dp)
+                enabled = if (scheduleMode == 0) (selectedCategory != null || availableCategories.isNotEmpty()) else selectedRoutine != null,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NothingRed)
             ) {
-                Text("Schedule Routine")
+                Text("Confirm & Schedule")
             }
         },
         dismissButton = {
