@@ -1,0 +1,50 @@
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "RoutineForge: Routine Planner",
+  "applicationCategory": "ProductivityApplication",
+  "operatingSystem": "Android 8.0 and above",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "Visual daily routine planner, habit tracker & focus timer with Nothing OS style, haptic vibration alerts 1 minute before tasks, Picture-in-Picture mode, and home screen widgets.",
+  "softwareVersion": "1.0",
+  "fileSize": "2.18MB",
+  "featureList": [
+    "Dual-stage vibration alerts (1 min pre-alert + on-time start)",
+    "Nothing OS monospace tabular zero-jitter countdown timer",
+    "Direct calendar task scheduling by category",
+    "Simple continuous focus blocks or structured multi-step routines",
+    "Picture-in-Picture (PiP) floating timer and home screen widget",
+    "AI-powered semantic search with natural language intent recognition",
+    "100% offline, zero advertisements, zero data tracking"
+  ],
+  "faq": [
+    {
+      "@type": "Question",
+      "name": "How does RoutineForge's 1-minute pre-alert vibration work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "When scheduling any task or routine in the calendar, RoutineForge uses Android's exact AlarmManager to fire a tactile double-pulse vibration 1 minute before the task starts, followed by an authoritative start alarm on time."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does RoutineForge require internet or user registration?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. RoutineForge is 100% private, offline, and ad-free. All routines and history are stored strictly on your local device."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use RoutineForge while watching study videos or gym guides?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. RoutineForge supports native Android Picture-in-Picture (PiP) and an in-app persistent mini player pill so you can multitask freely while your timer ticks down."
+      }
+    }
+  ]
+}

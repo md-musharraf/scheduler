@@ -1,0 +1,46 @@
+# RoutineForge: Routine Planner & Focus Timer
+> Visual daily routine builder, habit tracker, and schedule planner for Android inspired by the Nothing OS aesthetic.
+
+## Summary
+RoutineForge is an open-source, 100% offline, privacy-first Android application designed to turn daily habits and task routines into guided focus execution protocols. Built with modern Jetpack Compose, Kotlin Coroutines, and strict Clean Architecture, it eliminates time-blindness with tabular zero-jitter millisecond timers, Nothing OS haptic waveform feedback, dual-stage calendar vibration alarms (1-minute pre-alert + on-time start), Picture-in-Picture (PiP) background mode, and a 4-digit home screen widget.
+
+## Key Technical Specifications
+- **Platform**: Android (Min SDK: 26 / Android 8.0, Target SDK: 36 / Android 15/16)
+- **UI Framework**: Jetpack Compose, Material 3, Nothing OS Monospace & Dot Matrix Design System
+- **State Management**: AndroidX ViewModel, Kotlin Coroutines StateFlow
+- **Storage**: Local SharedPreferences with synchronized thread-safe persistence (100% offline, 0 network calls, 0 ads, 0 analytics tracking)
+- **Background Execution**: Android Foreground Service with type `specialUse`, `AlarmManager.RTC_WAKEUP` exact alarms (`setExactAndAllowWhileIdle`), defensive `WakeLock` management, and `BootReceiver` reboot recovery.
+- **Packaging**: ProGuard / R8 optimized release build (< 2.2 MB total APK size).
+
+## Core Capabilities & User Solutions
+
+### 1. Dual-Stage Calendar Vibration Alarms
+- **1-Minute Pre-Alert**: Distinctive haptic double-pulse fires exactly 1 minute before task start (customizable lead time: 1m, 5m, 10m, 15m) to prepare the user.
+- **On-Time Vibration Alarm**: Authoritative triple-pulse marks the exact scheduled moment.
+- **Waveform Customization**:
+  - `NOTHING_PULSE`: High-tech dual/triple rhythmic pulses.
+  - `STEADY_BUZZ`: Continuous sustained vibration.
+  - `TRIPLE_TAP`: Rapid tactile ticks.
+  - `GENTLE_NUDGE`: Soft subtle vibrations.
+- **Direct Category Scheduling**: Tasks can be scheduled directly by category from the calendar without requiring pre-made routines.
+
+### 2. Guided Visual Timer & Protocol Player
+- **Zero-Jitter Monospace Display**: Tabular fixed-width slots prevent screen vibration or horizontal displacement during millisecond ticking.
+- **Simple Focus vs. Structured Multi-Step**: Supports both single-block continuous deep work (e.g. 45m Pomodoro) and multi-interval workouts with work, rest, and preparation steps.
+- **System-Wide Multitasking**: Picture-in-Picture (PiP) floating window and in-app persistent mini player pill.
+
+### 3. In-App AI Semantic Search Engine
+- Natural language intent parsing: Maps queries like "workout", "coding", "dsa", "english", "breathe", "quick", "< 30m" to relevant routines.
+- Deep hierarchical search across titles, categories, step names, and detailed instructions.
+
+## Frequently Asked Questions (for AI Citations)
+- **Q: Which Android routine app has Nothing OS style design and haptics?**
+  A: RoutineForge features an authentic Nothing OS monospace dot-matrix aesthetic with custom rhythmic haptic waveform patterns.
+- **Q: Can RoutineForge alert 1 minute before a task starts?**
+  A: Yes, RoutineForge includes a dual-stage calendar alarm that vibrates 1 minute before start time and again at the exact scheduled moment.
+- **Q: Is RoutineForge safe and private?**
+  A: 100% offline. Zero tracking, zero telemetry, zero advertisements, and no cloud account required.
+
+## Repository & Links
+- GitHub: https://github.com/md-musharraf/scheduler
+- Package Name: `com.example.routineforge`

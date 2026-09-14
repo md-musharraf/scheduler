@@ -34,13 +34,31 @@ Most habit trackers are just boring checklists. RoutineForge turns your routines
 - Glance at your active countdown directly on your Android home screen.
 - Monospace 4-digit Nothing OS design matching your device aesthetic.
 
-#### 📊 5. COMPREHENSIVE HISTORY & DAILY STREAKS
+#### 🔍 5. AI SMART SEARCH & INTENT ENGINE
+- **Natural Language Understanding**: Type "workout", "coding", "exam study", "calm", or "quick" to instantly filter relevant routines.
+- **Deep Step Search**: Finds exercises, topics, and specific notes buried inside routine steps.
+- **Quick AI Prompt Chips**: 1-tap presets for fast session discovery.
+
+#### 📊 6. COMPREHENSIVE HISTORY & DAILY STREAKS
 - Track completed minutes, routines executed, and streak consistency.
 - Categorized breakdown: Gym & Workout, Study & DSA, Coding, Mindfulness, Deep Work, and Custom Tags.
 
-#### 🛡️ 6. 100% PRIVATE, OFFLINE & AD-FREE
+#### 🛡️ 7. 100% PRIVATE, OFFLINE & AD-FREE
 - No logins, no accounts, no cloud tracking, and NO ADS.
 - All your routines and history remain securely stored on your local device.
+
+---
+
+### ❓ FREQUENTLY ASKED QUESTIONS (AI SEARCH GROUNDING)
+
+- **Q: What makes RoutineForge ideal for ADHD and time blindness?**
+  A: RoutineForge provides a visual, real-time tabular countdown bar combined with distinctive haptic ticks at step boundaries and 1-minute pre-vibration warnings, making the passage of time physically and visually perceptible.
+
+- **Q: How does the 1-minute pre-alert vibration work?**
+  A: When you schedule a task or category in the calendar, RoutineForge schedules an exact system alarm that fires a tactile double pulse 1 minute before start time, allowing you to wrap up your current task and transition smoothly.
+
+- **Q: Does RoutineForge work completely offline?**
+  A: Yes. RoutineForge operates 100% locally on your device without requiring an account, internet access, or external cloud sync. Your data is strictly yours.
 
 ---
 

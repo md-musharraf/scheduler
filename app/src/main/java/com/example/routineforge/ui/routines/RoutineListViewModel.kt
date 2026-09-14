@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.example.routineforge.util.SmartSearchEngine
 import java.util.UUID
 
 data class RoutineListUiState(
@@ -20,6 +21,7 @@ data class RoutineListUiState(
     val filteredRoutines: List<Routine> = emptyList(),
     val selectedCategoryId: String? = null,
     val searchQuery: String = "",
+    val smartSuggestions: List<SmartSearchEngine.SearchSuggestion> = SmartSearchEngine.QUICK_SUGGESTIONS,
     val completedSessions: List<CompletedSession> = emptyList(),
     val themeMode: String = "DARK"
 )
@@ -50,13 +52,12 @@ class RoutineListViewModel(
         selectedCategoryId,
         searchQuery
     ) { repo, catId, query ->
-        val filtered = repo.routines.filter { routine ->
-            val matchesCategory = catId == null || routine.categoryId == catId
-            val matchesQuery = query.isBlank() ||
-                    routine.title.contains(query, ignoreCase = true) ||
-                    routine.description.contains(query, ignoreCase = true)
-            matchesCategory && matchesQuery
-        }
+        val filtered = SmartSearchEngine.search(
+            routines = repo.routines,
+            categories = repo.categories,
+            rawQuery = query,
+            selectedCategoryId = catId
+        )
 
         RoutineListUiState(
             categories = repo.categories,
@@ -64,6 +65,7 @@ class RoutineListViewModel(
             filteredRoutines = filtered,
             selectedCategoryId = catId,
             searchQuery = query,
+            smartSuggestions = SmartSearchEngine.QUICK_SUGGESTIONS,
             completedSessions = repo.sessions,
             themeMode = repo.themeMode
         )

@@ -299,6 +299,31 @@ fun RoutineListScreen(
                     .padding(horizontal = 16.dp, vertical = 6.dp)
             )
 
+            // AI Smart Search Prompt Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                uiState.smartSuggestions.forEach { suggestion ->
+                    val isSelected = uiState.searchQuery.equals(suggestion.query, ignoreCase = true)
+                    NothingPillTag(
+                        text = suggestion.label,
+                        isHighlight = isSelected,
+                        leadingDotColor = if (isSelected) NothingRed else null,
+                        modifier = Modifier.clickable {
+                            if (isSelected) {
+                                viewModel.updateSearchQuery("")
+                            } else {
+                                viewModel.updateSearchQuery(suggestion.query)
+                            }
+                        }
+                    )
+                }
+            }
+
             // Category Filter Chips
             CategoryChipsRow(
                 categories = uiState.categories,
@@ -307,6 +332,13 @@ fun RoutineListScreen(
                 onAddCategoryClick = { showAddCategoryDialog = true },
                 onDeleteCategory = { viewModel.deleteCategory(it) }
             )
+
+            if (uiState.searchQuery.isNotBlank()) {
+                NothingSectionHeader(
+                    index = "${uiState.filteredRoutines.size}",
+                    title = "AI Matches: \"${uiState.searchQuery}\""
+                )
+            }
 
             // Routine List
             if (uiState.filteredRoutines.isEmpty()) {
