@@ -10,13 +10,11 @@ import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.PowerManager
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.example.routineforge.MainActivity
 import com.example.routineforge.R
 import com.example.routineforge.data.RoutineRepository
+import com.example.routineforge.util.HapticFeedbackManager
 
 class CalendarReminderReceiver : BroadcastReceiver() {
 
@@ -35,7 +33,7 @@ class CalendarReminderReceiver : BroadcastReceiver() {
                 val categoryName = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_CATEGORY_NAME) ?: "Routine"
                 val categoryEmoji = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_CATEGORY_EMOJI) ?: "🎯"
                 val isPreReminder = intent.getBooleanExtra(CalendarAlarmScheduler.EXTRA_IS_PRE_REMINDER, false)
-                val patternName = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_VIBRATION_PATTERN) ?: "NOTHING_PULSE"
+                val patternName = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_VIBRATION_PATTERN) ?: HapticFeedbackManager.PATTERN_NOTHING_PULSE
                 val routineId = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_ROUTINE_ID) ?: ""
 
                 handleAlarmAlert(
@@ -55,7 +53,7 @@ class CalendarReminderReceiver : BroadcastReceiver() {
                 val repository = RoutineRepository.getInstance(context)
                 repository.toggleScheduledCompleted(taskId)
 
-                // Cancel notification
+                // Cancel notification safely
                 val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
                 notificationManager?.cancel(taskId.hashCode())
             }
@@ -72,89 +70,33 @@ class CalendarReminderReceiver : BroadcastReceiver() {
         patternName: String,
         routineId: String
     ) {
-        // 1) Wake lock to ensure vibration and alert execute even when device is locked/sleeping
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val wakeLock = powerManager?.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
             "RoutineForge:CalendarAlarmWakeLock"
         )
-        wakeLock?.acquire(10_000L) // 10 seconds timeout
-
-        // 2) Trigger authoritative vibration
-        triggerVibration(context, isPreReminder, patternName)
-
-        // 3) Show High-Priority Heads-Up Notification
-        createNotificationChannel(context)
-        showReminderNotification(
-            context = context,
-            taskId = taskId,
-            taskTitle = taskTitle,
-            categoryName = categoryName,
-            categoryEmoji = categoryEmoji,
-            isPreReminder = isPreReminder,
-            routineId = routineId
-        )
-    }
-
-    private fun triggerVibration(context: Context, isPreReminder: Boolean, patternName: String) {
         try {
-            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                manager?.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            } ?: return
+            wakeLock?.acquire(10_000L) // 10s maximum timeout
 
-            val (timings, amplitudes) = getVibrationPattern(isPreReminder, patternName)
+            // 1) Trigger authoritative haptic pattern via DRY HapticFeedbackManager
+            HapticFeedbackManager.vibratePattern(context, patternName, isPreReminder)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
-                vibrator.vibrate(effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(timings, -1)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun getVibrationPattern(isPreReminder: Boolean, patternName: String): Pair<LongArray, IntArray> {
-        return when (patternName) {
-            "STEADY_BUZZ" -> {
-                if (isPreReminder) {
-                    Pair(longArrayOf(0, 700), intArrayOf(0, 255))
-                } else {
-                    Pair(longArrayOf(0, 1200), intArrayOf(0, 255))
-                }
-            }
-            "TRIPLE_TAP" -> {
-                if (isPreReminder) {
-                    Pair(
-                        longArrayOf(0, 200, 100, 200, 100, 200),
-                        intArrayOf(0, 255, 0, 255, 0, 255)
-                    )
-                } else {
-                    Pair(
-                        longArrayOf(0, 350, 120, 350, 120, 450),
-                        intArrayOf(0, 255, 0, 255, 0, 255)
-                    )
-                }
-            }
-            else -> { // "NOTHING_PULSE"
-                if (isPreReminder) {
-                    // 1-min pre-alert: sharp double pulse
-                    Pair(
-                        longArrayOf(0, 350, 150, 350),
-                        intArrayOf(0, 255, 0, 255)
-                    )
-                } else {
-                    // At-time alert: authoritative triple pulse
-                    Pair(
-                        longArrayOf(0, 500, 200, 500, 200, 700),
-                        intArrayOf(0, 255, 0, 255, 0, 255)
-                    )
+            // 2) Show High-Priority Heads-Up Notification
+            createNotificationChannel(context)
+            showReminderNotification(
+                context = context,
+                taskId = taskId,
+                taskTitle = taskTitle,
+                categoryName = categoryName,
+                categoryEmoji = categoryEmoji,
+                isPreReminder = isPreReminder,
+                routineId = routineId
+            )
+        } finally {
+            if (wakeLock?.isHeld == true) {
+                try {
+                    wakeLock.release()
+                } catch (_: Exception) {
                 }
             }
         }
@@ -198,8 +140,9 @@ class CalendarReminderReceiver : BroadcastReceiver() {
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
-        // Tap on notification -> Open app
+        // Tap on notification -> Open app securely with explicit package
         val openIntent = Intent(context, MainActivity::class.java).apply {
+            setPackage(context.packageName)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             if (routineId.isNotBlank()) {
                 putExtra("extra_start_routine_id", routineId)
@@ -214,8 +157,9 @@ class CalendarReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action: Mark Done directly
+        // Action: Mark Done directly with explicit package and class
         val markDoneIntent = Intent(context, CalendarReminderReceiver::class.java).apply {
+            setPackage(context.packageName)
             action = CalendarAlarmScheduler.ACTION_CALENDAR_MARK_DONE
             putExtra(CalendarAlarmScheduler.EXTRA_TASK_ID, taskId)
         }

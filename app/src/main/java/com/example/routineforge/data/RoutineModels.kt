@@ -1,5 +1,7 @@
 package com.example.routineforge.data
 
+import androidx.compose.runtime.Immutable
+import com.example.routineforge.util.TimeFormatters
 import java.util.UUID
 
 enum class StepType {
@@ -14,6 +16,7 @@ enum class StepType {
     }
 }
 
+@Immutable
 data class RoutineStep(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -21,17 +24,18 @@ data class RoutineStep(
     val stepType: StepType = StepType.WORK,
     val instruction: String = ""
 ) {
-    fun formattedDuration(): String {
-        val minutes = durationSeconds / 60
-        val seconds = durationSeconds % 60
-        return when {
-            minutes > 0 && seconds > 0 -> "${minutes}m ${seconds}s"
-            minutes > 0 -> "${minutes}m"
-            else -> "${seconds}s"
-        }
+    fun formattedDuration(): String = TimeFormatters.formatDurationSeconds(durationSeconds)
+
+    fun sanitized(): RoutineStep {
+        return copy(
+            title = title.trim().take(80),
+            durationSeconds = durationSeconds.coerceIn(1, 86400),
+            instruction = instruction.trim().take(200)
+        )
     }
 }
 
+@Immutable
 data class RoutineCategory(
     val id: String,
     val name: String,
@@ -48,8 +52,16 @@ data class RoutineCategory(
             RoutineCategory("cat_productivity", "Focus", "⚡", 0xFFF59E0B)
         )
     }
+
+    fun sanitized(): RoutineCategory {
+        return copy(
+            name = name.trim().take(40),
+            emoji = if (emoji.isBlank()) "🎯" else emoji.trim().take(4)
+        )
+    }
 }
 
+@Immutable
 data class Routine(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
@@ -64,20 +76,18 @@ data class Routine(
         get() = steps.sumOf { it.durationSeconds }
 
     val formattedDuration: String
-        get() {
-            val total = totalDurationSeconds
-            val hours = total / 3600
-            val minutes = (total % 3600) / 60
-            val seconds = total % 60
-            return when {
-                hours > 0 -> "${hours}h ${minutes}m"
-                minutes > 0 && seconds > 0 -> "${minutes}m ${seconds}s"
-                minutes > 0 -> "${minutes}m"
-                else -> "${seconds}s"
-            }
-        }
+        get() = TimeFormatters.formatDurationSeconds(totalDurationSeconds)
+
+    fun sanitized(): Routine {
+        return copy(
+            title = title.trim().take(80),
+            description = description.trim().take(300),
+            steps = steps.map { it.sanitized() }
+        )
+    }
 }
 
+@Immutable
 data class CompletedSession(
     val id: String = UUID.randomUUID().toString(),
     val routineId: String,
@@ -90,17 +100,10 @@ data class CompletedSession(
     val stepsCompleted: Int,
     val totalSteps: Int
 ) {
-    fun formattedDuration(): String {
-        val minutes = durationSeconds / 60
-        val seconds = durationSeconds % 60
-        return when {
-            minutes > 0 && seconds > 0 -> "${minutes}m ${seconds}s"
-            minutes > 0 -> "${minutes}m"
-            else -> "${seconds}s"
-        }
-    }
+    fun formattedDuration(): String = TimeFormatters.formatDurationSeconds(durationSeconds)
 }
 
+@Immutable
 data class ScheduledRoutine(
     val id: String = UUID.randomUUID().toString(),
     val routineId: String = "",
@@ -111,20 +114,22 @@ data class ScheduledRoutine(
     val dateEpochDay: Long, // LocalDate.toEpochDay()
     val timeOfDay: String = "09:00", // e.g. "07:00", "18:30"
     val durationMinutes: Int = 30, // Default duration in minutes
-    val remindBeforeMinutes: Int = 1, // Alert 1 min before (as requested)
+    val remindBeforeMinutes: Int = 1, // Alert 1 min before (customizable)
     val remindAtTime: Boolean = true, // Alert at exact scheduled time
-    val vibrationPattern: String = "NOTHING_PULSE", // NOTHING_PULSE, STEADY_BUZZ, TRIPLE_TAP
+    val vibrationPattern: String = "NOTHING_PULSE",
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 ) {
-    fun formattedDuration(): String {
-        val hours = durationMinutes / 60
-        val mins = durationMinutes % 60
-        return when {
-            hours > 0 && mins > 0 -> "${hours}h ${mins}m"
-            hours > 0 -> "${hours}h"
-            else -> "${mins}m"
-        }
+    fun formattedDuration(): String = TimeFormatters.formatDurationMinutes(durationMinutes)
+
+    fun sanitized(): ScheduledRoutine {
+        val safeTime = if (TimeFormatters.isValidTimeOfDay(timeOfDay)) timeOfDay else "09:00"
+        return copy(
+            routineTitle = routineTitle.trim().take(80),
+            categoryName = categoryName.trim().take(40),
+            timeOfDay = safeTime,
+            durationMinutes = durationMinutes.coerceIn(1, 1440),
+            remindBeforeMinutes = remindBeforeMinutes.coerceIn(0, 120)
+        )
     }
 }
-

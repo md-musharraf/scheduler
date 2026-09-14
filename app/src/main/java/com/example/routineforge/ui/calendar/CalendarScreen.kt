@@ -89,6 +89,8 @@ import com.example.routineforge.theme.BrandSecondary
 import com.example.routineforge.theme.BrandTertiary
 import com.example.routineforge.theme.DarkBg
 import com.example.routineforge.theme.NothingDottedDivider
+import com.example.routineforge.theme.NothingDurationChip
+import com.example.routineforge.theme.NothingHapticTestButton
 import com.example.routineforge.theme.NothingPillTag
 import com.example.routineforge.theme.NothingRed
 import com.example.routineforge.theme.NothingSectionHeader
@@ -753,17 +755,10 @@ fun ScheduledRoutineCard(
                 }
 
                 // Vibration Test Quick Button
-                IconButton(
-                    onClick = onTestVibration,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.Vibration,
-                        contentDescription = "Test Vibration",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(17.dp)
-                    )
-                }
+                NothingHapticTestButton(
+                    onTestClick = onTestVibration,
+                    tint = MaterialTheme.colorScheme.primary
+                )
 
                 // Delete button
                 IconButton(
@@ -1242,11 +1237,10 @@ fun ScheduleRoutineDialog(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             durationOptions.forEach { mins ->
-                                FilterChip(
-                                    selected = durationMinutes == mins,
-                                    onClick = { durationMinutes = mins },
-                                    label = { Text(if (mins >= 60) "${mins / 60}h" else "${mins}m", fontSize = 11.sp) },
-                                    shape = RoundedCornerShape(10.dp)
+                                NothingDurationChip(
+                                    text = if (mins >= 60) "${mins / 60}h" else "${mins}m",
+                                    isSelected = durationMinutes == mins,
+                                    onClick = { durationMinutes = mins }
                                 )
                             }
                         }

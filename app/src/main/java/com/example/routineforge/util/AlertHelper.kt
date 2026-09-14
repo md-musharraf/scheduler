@@ -3,12 +3,11 @@ package com.example.routineforge.util
 import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
-import android.os.Build
-import android.os.CombinedVibration
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 
+/**
+ * Helper for audio beeps and tactile haptic feedback alerts during timer and routine playback.
+ * Delegates haptic waveform vibration to HapticFeedbackManager for strict DRY compliance.
+ */
 class AlertHelper(private val context: Context) {
 
     private var toneGenerator: ToneGenerator? = null
@@ -21,20 +20,6 @@ class AlertHelper(private val context: Context) {
         }
     }
 
-    private val vibrator: Vibrator? by lazy {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                manager?.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     fun playWarningTick(soundEnabled: Boolean = true, vibeEnabled: Boolean = true) {
         if (soundEnabled) {
             try {
@@ -44,7 +29,7 @@ class AlertHelper(private val context: Context) {
             }
         }
         if (vibeEnabled) {
-            vibrate(60)
+            HapticFeedbackManager.vibrateOneShot(context, 60L)
         }
     }
 
@@ -57,18 +42,7 @@ class AlertHelper(private val context: Context) {
             }
         }
         if (vibeEnabled) {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    // Full 1-second (1000ms) authoritative haptic vibration for task transitions
-                    val effect = VibrationEffect.createOneShot(1000L, VibrationEffect.DEFAULT_AMPLITUDE)
-                    vibrator?.vibrate(effect)
-                } else {
-                    @Suppress("DEPRECATION")
-                    vibrator?.vibrate(1000L)
-                }
-            } catch (e: Exception) {
-                vibrate(1000L)
-            }
+            HapticFeedbackManager.vibrateOneShot(context, 1000L)
         }
     }
 
@@ -81,59 +55,12 @@ class AlertHelper(private val context: Context) {
             }
         }
         if (vibeEnabled) {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    // 1200ms celebratory haptic pattern (two 500ms pulses with 200ms rest)
-                    val timings = longArrayOf(0, 500, 200, 500)
-                    val amplitudes = intArrayOf(0, 255, 0, 255)
-                    vibrator?.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
-                } else {
-                    @Suppress("DEPRECATION")
-                    vibrator?.vibrate(longArrayOf(0, 500, 200, 500), -1)
-                }
-            } catch (e: Exception) {
-                vibrate(1000L)
-            }
+            HapticFeedbackManager.vibrateRoutineComplete(context)
         }
     }
-
 
     fun testVibrationPattern(patternName: String) {
-        try {
-            val (timings, amplitudes) = when (patternName) {
-                "STEADY_BUZZ" -> Pair(longArrayOf(0, 600), intArrayOf(0, 255))
-                "TRIPLE_TAP" -> Pair(
-                    longArrayOf(0, 180, 80, 180, 80, 180),
-                    intArrayOf(0, 255, 0, 255, 0, 255)
-                )
-                else -> Pair(
-                    longArrayOf(0, 300, 120, 300),
-                    intArrayOf(0, 255, 0, 255)
-                )
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
-                vibrator?.vibrate(effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(timings, -1)
-            }
-        } catch (e: Exception) {
-            vibrate(400L)
-        }
-    }
-
-    private fun vibrate(milliseconds: Long) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(milliseconds)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        HapticFeedbackManager.vibratePattern(context, patternName, isPreReminder = false)
     }
 
     fun release() {

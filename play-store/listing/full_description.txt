@@ -1,0 +1,56 @@
+Transform your daily productivity, build atomic habits, and master your time with **RoutineForge: Routine Planner** — the visual routine builder, habit tracker, and daily schedule planner inspired by the iconic Nothing OS aesthetic.
+
+Whether you want to crush intense study sessions, conquer multi-exercise gym workouts, practice deliberate communication skills, or plan your daily time blocks, RoutineForge provides a zero-distraction protocol execution engine designed for high performers.
+
+---
+
+### ⚡ WHY ROUTINEFORGE IS DIFFERENT
+
+Most habit trackers are just boring checklists. RoutineForge turns your routines into **active, guided focus sessions** with zero horizontal jitter, smooth second-by-second countdowns, tactile Nothing OS haptic feedback pulses, Picture-in-Picture floating timers, and a dedicated Calendar Task Scheduler.
+
+---
+
+### 🌟 KEY FEATURES & CAPABILITIES
+
+#### 📅 1. SMART CALENDAR & DUAL-STAGE VIBRATION ALERTS
+- **Pre-Alert (1 Minute Advance Warning)**: Never get caught off guard. Receive a distinctive tactile double pulse 1 minute before your scheduled task starts to prepare your mind and workstation.
+- **On-Time Vibration Alarm**: Authoritative triple pulse rings in the exact second your session begins.
+- **Direct Task Scheduling**: Add quick category sessions directly from the calendar without needing to pre-configure a full routine.
+- **Custom Haptic Patterns**: Choose between *Nothing Pulse*, *Steady Buzz*, *Triple Tap*, and *Gentle Nudge* with live in-app vibration test preview.
+- **Reboot Resilience**: Built-in background alarm persistence keeps your schedule active even after restarting your phone.
+
+#### ⏱️ 2. GUIDED VISUAL ROUTINE TIMER & PLAYER
+- **Step-by-Step Execution**: Effortlessly glide through work, rest, and preparation intervals.
+- **Tabular Zero-Jitter Monospace Clock**: Crystal-clear Nothing OS typography ensures millisecond accuracy without screen shaking or horizontal shifting.
+- **Simple Focus vs. Structured Multi-Step**: Choose between a continuous single-block focus session (e.g. 45m Deep Work) or a detailed step-by-step breakdown.
+- **Audio & Haptic Interval Ticks**: Tactile feedback pulses cue you when time is almost up and when intervals transition.
+
+#### 📱 3. PICTURE-IN-PICTURE (PiP) & FLOATING MINI TIMER
+- **System-Wide Multitasking**: Watch your countdown timer float above any app while reading PDFs, watching lectures, coding, or following gym exercise videos.
+- **Interactive Controls**: Play, pause, skip, and monitor current step names directly inside the floating PiP window.
+- **In-App Persistent Pill**: Browse your calendar or edit routines while your active session ticks down in a discrete floating pill.
+
+#### 📳 4. NOTHING OS HOME SCREEN WIDGET
+- Glance at your active countdown directly on your Android home screen.
+- Monospace 4-digit Nothing OS design matching your device aesthetic.
+
+#### 📊 5. COMPREHENSIVE HISTORY & DAILY STREAKS
+- Track completed minutes, routines executed, and streak consistency.
+- Categorized breakdown: Gym & Workout, Study & DSA, Coding, Mindfulness, Deep Work, and Custom Tags.
+
+#### 🛡️ 6. 100% PRIVATE, OFFLINE & AD-FREE
+- No logins, no accounts, no cloud tracking, and NO ADS.
+- All your routines and history remain securely stored on your local device.
+
+---
+
+### 🎯 PERFECT FOR:
+- **Students & Competitive Exam Aspirants**: Structured Pomodoro intervals, revision blocks, and timed test practice.
+- **Software Engineers & Coders**: LeetCode sprints, bug-fixing focus blocks, and continuous deep work.
+- **Fitness & Calisthenics Enthusiasts**: Circuit timers, HIIT intervals, rest timer management, and workout protocols.
+- **ADHD & Time-Blindness Management**: Visual countdown bars and haptic transitions make passing time physically perceptible.
+
+---
+
+### 🔍 TARGET KEYWORDS / SEARCH TERMS
+Routine Planner • Daily Schedule Planner • Habit Tracker • Visual Timer • Focus Timer • Time Blocking App • Interval Workout Timer • Study Timer • Minimalist Productivity • Nothing OS Widget • Task Calendar • Haptic Alarm • PiP Timer • Offline Schedule Planner

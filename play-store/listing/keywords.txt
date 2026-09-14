@@ -1,0 +1,58 @@
+# ============================================================================
+# Google Play Store Keyword Target Matrix (ASO - App Store Optimization)
+# App: RoutineForge: Routine Planner
+# Package: com.example.routineforge
+# Category: Productivity / Tools
+# ============================================================================
+
+## 1. High-Volume Primary Keywords (High Intent)
+| Keyword | Search Intent | Target Placement | Density Recommendation |
+|---|---|---|---|
+| routine planner | Core User Problem | App Title, Short & Full Desc | 4-5x in Full Description |
+| daily routine | Habit Building | Full Description & Tags | 3-4x |
+| habit tracker | Consistency & Goals | Short & Full Desc, Tags | 3-4x |
+| focus timer | Productivity & Study | Short & Full Desc | 3-4x |
+| daily planner | Schedule Organization | Full Description | 3x |
+| time blocking | Deep Work Scheduling | Full Description | 2-3x |
+
+## 2. Mid-Tail Feature Keywords (High Conversion)
+| Keyword | Feature Mapping | Placement |
+|---|---|---|
+| visual timer | Step-by-step progress countdown bar | Full Description |
+| interval workout timer | HIIT / Gym Routines / Rest Intervals | Features section |
+| calendar schedule planner | Calendar Screen & Direct Category Planner | Title & Calendar features |
+| vibration alarm | 1-min pre-alert & exact on-time haptics | Features bullet points |
+| picture in picture timer | PiP Floating Mode on Android | PiP section |
+| home screen widget | Monospace Nothing OS 4-digit timer | Features section |
+| study timer | Coding, LeetCode, Exam prep | Use cases section |
+
+## 3. High-Intent Long-Tail Keywords (Low Competition, Easy to Rank)
+- "routine planner with vibration alarm"
+- "visual routine countdown timer"
+- "nothing os style habit tracker"
+- "daily schedule planner offline no ads"
+- "multi step interval timer for study and gym"
+- "time blocking planner with pip widget"
+- "minimalist routine app dark mode"
+
+## 4. Localized / Regional Search Keywords (India & Global English)
+- daily routine schedule app
+- time table app for study
+- study routine planner app
+- daily task scheduler with alarm
+- habit timer app
+- gym workout interval timer
+
+## 5. Google Play Console Recommended Tags (Max 5)
+1. Productivity
+2. Time Management
+3. Habits & Self-Care
+4. Calendar & Planner
+5. Tools
+
+## 6. Icon & Screenshot ASO Recommendations
+1. Screenshot 1 (Value Hook): "PLAN & CRUSH YOUR DAY" -> Show Calendar screen with task badges & 1m pre-alert.
+2. Screenshot 2 (Action): "ZERO-JITTER VISUAL TIMER" -> Show Routine Player with tabular monospace digits & active progress bar.
+3. Screenshot 3 (Multitasking): "PICTURE-IN-PICTURE & WIDGET" -> Show PiP floating countdown and home screen widget.
+4. Screenshot 4 (Simplicity): "CUSTOM FOCUS OR STRUCTURED STEPS" -> Show Routine Editor simple mode toggle.
+5. Screenshot 5 (Privacy): "100% PRIVATE • OFFLINE • NO ADS" -> Highlight clean Nothing OS aesthetics.

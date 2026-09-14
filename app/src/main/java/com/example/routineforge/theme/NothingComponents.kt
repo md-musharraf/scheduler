@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -361,5 +365,67 @@ fun TabularStopwatchDigits(
         digitSize = digitSize,
         millisSize = millisSize
     )
+}
+
+/**
+ * Reusable Nothing OS Monospace Duration Selection Chip
+ */
+@Composable
+fun NothingDurationChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isSelected) NothingRedSubtle else MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier
+            .border(
+                width = 1.dp,
+                color = if (isSelected) NothingRed else MaterialTheme.colorScheme.outline,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.5.sp,
+                    color = if (isSelected) NothingRed else MaterialTheme.colorScheme.onSurface
+                )
+            )
+        }
+    }
+}
+
+/**
+ * Reusable Tactile Haptic Vibration Preview Icon Button
+ */
+@Composable
+fun NothingHapticTestButton(
+    onTestClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = NothingRed
+) {
+    IconButton(
+        onClick = onTestClick,
+        modifier = modifier.size(34.dp)
+    ) {
+        Icon(
+            Icons.Filled.Vibration,
+            contentDescription = "Test Haptic Vibration Pattern",
+            tint = tint,
+            modifier = Modifier.size(18.dp)
+        )
+    }
 }
 

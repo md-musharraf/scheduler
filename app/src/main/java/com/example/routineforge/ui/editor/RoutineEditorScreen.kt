@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.routineforge.data.RoutineStep
 import com.example.routineforge.data.StepType
+import com.example.routineforge.theme.NothingDurationChip
 import com.example.routineforge.theme.NothingPillTag
 import com.example.routineforge.theme.NothingRed
 import com.example.routineforge.theme.NothingRedSubtle
@@ -394,16 +395,10 @@ fun RoutineEditorScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 durationPresets.forEach { mins ->
-                                    FilterChip(
-                                        selected = uiState.simpleDurationMinutes == mins,
-                                        onClick = { viewModel.updateSimpleDurationMinutes(mins) },
-                                        label = {
-                                            Text(
-                                                if (mins == 25) "25m (Pomodoro)" else if (mins >= 60) "${mins / 60}h" else "${mins}m",
-                                                fontWeight = if (uiState.simpleDurationMinutes == mins) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        },
-                                        shape = RoundedCornerShape(12.dp)
+                                    NothingDurationChip(
+                                        text = if (mins == 25) "25m (Pomodoro)" else if (mins >= 60) "${mins / 60}h" else "${mins}m",
+                                        isSelected = uiState.simpleDurationMinutes == mins,
+                                        onClick = { viewModel.updateSimpleDurationMinutes(mins) }
                                     )
                                 }
                             }

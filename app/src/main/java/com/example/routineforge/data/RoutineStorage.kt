@@ -2,9 +2,14 @@ package com.example.routineforge.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.routineforge.util.TimeFormatters
 import org.json.JSONArray
 import org.json.JSONObject
 
+/**
+ * Thread-safe, synchronized persistent storage for routines, categories, history and schedules.
+ * Hardened against concurrent write corruption and malformed input entries.
+ */
 class RoutineStorage(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("routine_forge_prefs", Context.MODE_PRIVATE)
@@ -122,141 +127,23 @@ class RoutineStorage(context: Context) {
                         instruction = "Write clean architecture code, build features, and write unit tests."
                     )
                 )
-            ),
-
-            Routine(
-                id = "routine_hiit",
-                title = "Full Body HIIT Circuit",
-                description = "High intensity workout with timed work and short rest intervals.",
-                categoryId = "cat_gym",
-                colorHex = 0xFFEF4444,
-                iconName = "fitness_center",
-                steps = listOf(
-                    RoutineStep(
-                        title = "Dynamic Warmup",
-                        durationSeconds = 60,
-                        stepType = StepType.PREPARE,
-                        instruction = "Jumping jacks, arm circles, and light high knees."
-                    ),
-                    RoutineStep(
-                        title = "Explosive Push-ups",
-                        durationSeconds = 45,
-                        stepType = StepType.WORK,
-                        instruction = "Keep core tight, full range of motion."
-                    ),
-                    RoutineStep(
-                        title = "Rest & Breathe",
-                        durationSeconds = 20,
-                        stepType = StepType.REST,
-                        instruction = "Deep inhales through nose, slow exhales."
-                    ),
-                    RoutineStep(
-                        title = "Air Squats & Pulse",
-                        durationSeconds = 45,
-                        stepType = StepType.WORK,
-                        instruction = "Chest up, weight on heels, push through glutes."
-                    ),
-                    RoutineStep(
-                        title = "Rest & Shake Legs",
-                        durationSeconds = 20,
-                        stepType = StepType.REST,
-                        instruction = "Shake out the lactic acid, get ready for core."
-                    ),
-                    RoutineStep(
-                        title = "High Plank Hold",
-                        durationSeconds = 45,
-                        stepType = StepType.WORK,
-                        instruction = "Squeeze abs, glutes, and shoulders solid as a rock."
-                    ),
-                    RoutineStep(
-                        title = "Mountain Climbers",
-                        durationSeconds = 45,
-                        stepType = StepType.WORK,
-                        instruction = "Drive knees up swiftly with controlled cadence."
-                    ),
-                    RoutineStep(
-                        title = "Cooldown & Quad Stretch",
-                        durationSeconds = 60,
-                        stepType = StepType.REST,
-                        instruction = "Gentle stretching and heart rate lowering."
-                    )
-                )
-            ),
-            Routine(
-                id = "routine_coding",
-                title = "LeetCode & Dev Deep Dive",
-                description = "Structured problem solving and algorithmic reasoning session.",
-                categoryId = "cat_coding",
-                colorHex = 0xFF06B6D4,
-                iconName = "code",
-                steps = listOf(
-                    RoutineStep(
-                        title = "Problem Breakdown & Invariants",
-                        durationSeconds = 10 * 60,
-                        stepType = StepType.WORK,
-                        instruction = "Understand constraints, identify edge cases, write pseudocode."
-                    ),
-                    RoutineStep(
-                        title = "Focused Code Implementation",
-                        durationSeconds = 30 * 60,
-                        stepType = StepType.WORK,
-                        instruction = "Write clean, modular code with optimal time/space complexity."
-                    ),
-                    RoutineStep(
-                        title = "Eye Rest & Hydration",
-                        durationSeconds = 5 * 60,
-                        stepType = StepType.REST,
-                        instruction = "Look 20 feet away to relax eye muscles, grab water."
-                    ),
-                    RoutineStep(
-                        title = "Test Cases, Profiling & Refactor",
-                        durationSeconds = 15 * 60,
-                        stepType = StepType.WORK,
-                        instruction = "Walk through boundary tests and verify Big-O efficiency."
-                    )
-                )
-            ),
-            Routine(
-                id = "routine_mindfulness",
-                title = "Morning Clarity & Breathing",
-                description = "Calm your mind, regulate nervous system, and set day's intentions.",
-                categoryId = "cat_mindfulness",
-                colorHex = 0xFF10B981,
-                iconName = "self_improvement",
-                steps = listOf(
-                    RoutineStep(
-                        title = "Box Breathing (4-4-4-4)",
-                        durationSeconds = 3 * 60,
-                        stepType = StepType.WORK,
-                        instruction = "Inhale 4s, Hold 4s, Exhale 4s, Hold 4s."
-                    ),
-                    RoutineStep(
-                        title = "Mindful Body Scan",
-                        durationSeconds = 3 * 60,
-                        stepType = StepType.REST,
-                        instruction = "Release tension in forehead, jaw, shoulders, and spine."
-                    ),
-                    RoutineStep(
-                        title = "Daily Intentions & Gratitude",
-                        durationSeconds = 2 * 60,
-                        stepType = StepType.WORK,
-                        instruction = "Mentally name 3 things you are grateful for and 1 primary goal."
-                    )
-                )
             )
         )
     }
 
     init {
-        val isCleared = prefs.getBoolean(KEY_DATA_CLEARED, false)
-        val isInitialized = prefs.getBoolean(KEY_INITIALIZED, false)
-        if (!isInitialized && !isCleared) {
-            saveCategories(DEFAULT_CATEGORIES)
-            saveRoutines(emptyList()) // Start with clean empty database
-            prefs.edit().putBoolean(KEY_INITIALIZED, true).apply()
+        synchronized(this) {
+            val isCleared = prefs.getBoolean(KEY_DATA_CLEARED, false)
+            val isInitialized = prefs.getBoolean(KEY_INITIALIZED, false)
+            if (!isInitialized && !isCleared) {
+                saveCategories(DEFAULT_CATEGORIES)
+                saveRoutines(emptyList()) // Start with clean empty database
+                prefs.edit().putBoolean(KEY_INITIALIZED, true).apply()
+            }
         }
     }
 
+    @Synchronized
     fun clearAllData() {
         prefs.edit()
             .putBoolean(KEY_DATA_CLEARED, true)
@@ -267,6 +154,7 @@ class RoutineStorage(context: Context) {
     }
 
     // Categories
+    @Synchronized
     fun getCategories(): List<RoutineCategory> {
         val jsonStr = prefs.getString(KEY_CATEGORIES, null) ?: return DEFAULT_CATEGORIES
         val list = mutableListOf<RoutineCategory>()
@@ -281,52 +169,56 @@ class RoutineStorage(context: Context) {
                         emoji = obj.optString("emoji", "🎯"),
                         colorHex = obj.optLong("colorHex", 0xFF6366F1),
                         isCustom = obj.optBoolean("isCustom", false)
-                    )
+                    ).sanitized()
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             return DEFAULT_CATEGORIES
         }
         return list
     }
 
+    @Synchronized
     fun saveCategories(categories: List<RoutineCategory>) {
         val arr = JSONArray()
         for (cat in categories) {
+            val clean = cat.sanitized()
             val obj = JSONObject().apply {
-                put("id", cat.id)
-                put("name", cat.name)
-                put("emoji", cat.emoji)
-                put("colorHex", cat.colorHex)
-                put("isCustom", cat.isCustom)
+                put("id", clean.id)
+                put("name", clean.name)
+                put("emoji", clean.emoji)
+                put("colorHex", clean.colorHex)
+                put("isCustom", clean.isCustom)
             }
             arr.put(obj)
         }
         prefs.edit().putString(KEY_CATEGORIES, arr.toString()).apply()
     }
 
+    @Synchronized
     fun addCategory(category: RoutineCategory) {
         val current = getCategories().toMutableList()
         val index = current.indexOfFirst { it.id == category.id }
         if (index >= 0) {
-            current[index] = category
+            current[index] = category.sanitized()
         } else {
-            current.add(category)
+            current.add(category.sanitized())
         }
         saveCategories(current)
     }
 
+    @Synchronized
     fun deleteCategory(categoryId: String) {
         val current = getCategories().filter { it.id != categoryId }
         saveCategories(current)
     }
 
     // Routines
+    @Synchronized
     fun getRoutines(): List<Routine> {
         val isCleared = prefs.getBoolean(KEY_DATA_CLEARED, false)
         val jsonStr = prefs.getString(KEY_ROUTINES, null)
-        if (jsonStr == null || jsonStr == "[]" || isCleared && jsonStr.isBlank()) {
+        if (jsonStr == null || jsonStr == "[]" || (isCleared && jsonStr.isBlank())) {
             return emptyList()
         }
         val list = mutableListOf<Routine>()
@@ -351,7 +243,7 @@ class RoutineStorage(context: Context) {
                             durationSeconds = sObj.getInt("durationSeconds"),
                             stepType = stepType,
                             instruction = sObj.optString("instruction", "")
-                        )
+                        ).sanitized()
                     )
                 }
 
@@ -365,36 +257,38 @@ class RoutineStorage(context: Context) {
                         iconName = obj.optString("iconName", "timer"),
                         steps = stepsList,
                         createdAt = obj.optLong("createdAt", System.currentTimeMillis())
-                    )
+                    ).sanitized()
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             return emptyList()
         }
         return list
     }
 
+    @Synchronized
     fun saveRoutines(routines: List<Routine>) {
         val arr = JSONArray()
         for (r in routines) {
+            val clean = r.sanitized()
             val obj = JSONObject().apply {
-                put("id", r.id)
-                put("title", r.title)
-                put("description", r.description)
-                put("categoryId", r.categoryId)
-                put("colorHex", r.colorHex)
-                put("iconName", r.iconName)
-                put("createdAt", r.createdAt)
+                put("id", clean.id)
+                put("title", clean.title)
+                put("description", clean.description)
+                put("categoryId", clean.categoryId)
+                put("colorHex", clean.colorHex)
+                put("iconName", clean.iconName)
+                put("createdAt", clean.createdAt)
 
                 val stepsArr = JSONArray()
-                for (s in r.steps) {
+                for (s in clean.steps) {
+                    val cleanStep = s.sanitized()
                     val sObj = JSONObject().apply {
-                        put("id", s.id)
-                        put("title", s.title)
-                        put("durationSeconds", s.durationSeconds)
-                        put("stepType", s.stepType.name)
-                        put("instruction", s.instruction)
+                        put("id", cleanStep.id)
+                        put("title", cleanStep.title)
+                        put("durationSeconds", cleanStep.durationSeconds)
+                        put("stepType", cleanStep.stepType.name)
+                        put("instruction", cleanStep.instruction)
                     }
                     stepsArr.put(sObj)
                 }
@@ -405,27 +299,32 @@ class RoutineStorage(context: Context) {
         prefs.edit().putString(KEY_ROUTINES, arr.toString()).apply()
     }
 
+    @Synchronized
     fun getRoutineById(id: String): Routine? {
         return getRoutines().firstOrNull { it.id == id }
     }
 
+    @Synchronized
     fun saveRoutine(routine: Routine) {
         val current = getRoutines().toMutableList()
-        val index = current.indexOfFirst { it.id == routine.id }
+        val clean = routine.sanitized()
+        val index = current.indexOfFirst { it.id == clean.id }
         if (index >= 0) {
-            current[index] = routine
+            current[index] = clean
         } else {
-            current.add(0, routine)
+            current.add(0, clean)
         }
         saveRoutines(current)
     }
 
+    @Synchronized
     fun deleteRoutine(routineId: String) {
         val current = getRoutines().filter { it.id != routineId }
         saveRoutines(current)
     }
 
     // Completed Sessions
+    @Synchronized
     fun getCompletedSessions(): List<CompletedSession> {
         val jsonStr = prefs.getString(KEY_SESSIONS, null) ?: return emptyList()
         val list = mutableListOf<CompletedSession>()
@@ -448,13 +347,13 @@ class RoutineStorage(context: Context) {
                     )
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             return emptyList()
         }
         return list
     }
 
+    @Synchronized
     fun saveCompletedSession(session: CompletedSession) {
         val current = getCompletedSessions().toMutableList()
         current.add(0, session)
@@ -480,60 +379,23 @@ class RoutineStorage(context: Context) {
         prefs.edit().putString(KEY_SESSIONS, arr.toString()).apply()
     }
 
+    @Synchronized
     fun clearHistory() {
         prefs.edit().remove(KEY_SESSIONS).apply()
     }
 
     // Scheduled Routines (Calendar Planning)
+    @Synchronized
     fun getScheduledRoutines(): List<ScheduledRoutine> {
-        val jsonStr = prefs.getString(KEY_SCHEDULED, null)
-        if (jsonStr == null) {
-            // Seed a couple of upcoming scheduled routines for today & tomorrow
-            val todayEpoch = java.time.LocalDate.now().toEpochDay()
-            val initialScheduled = listOf(
-                ScheduledRoutine(
-                    id = "sched_comm_today",
-                    routineId = "routine_comm",
-                    routineTitle = "Communication Skills (30 Min)",
-                    categoryName = "Communication Skills",
-                    categoryEmoji = "🎙️",
-                    categoryColorHex = 0xFF8B5CF6,
-                    dateEpochDay = todayEpoch,
-                    timeOfDay = "09:00",
-                    isCompleted = false
-                ),
-                ScheduledRoutine(
-                    id = "sched_gym_tomorrow",
-                    routineId = "routine_gym",
-                    routineTitle = "Gym Heavy Chest & Arms (2 Hours)",
-                    categoryName = "Gym & Workout",
-                    categoryEmoji = "💪",
-                    categoryColorHex = 0xFFEF4444,
-                    dateEpochDay = todayEpoch + 1,
-                    timeOfDay = "18:00",
-                    isCompleted = false
-                ),
-                ScheduledRoutine(
-                    id = "sched_study_day3",
-                    routineId = "routine_study",
-                    routineTitle = "Study & Development Sprint (4 Hours)",
-                    categoryName = "Study & Coding",
-                    categoryEmoji = "💻",
-                    categoryColorHex = 0xFF06B6D4,
-                    dateEpochDay = todayEpoch + 2,
-                    timeOfDay = "14:00",
-                    isCompleted = false
-                )
-            )
-            saveScheduledRoutines(initialScheduled)
-            return initialScheduled
-        }
-
+        val jsonStr = prefs.getString(KEY_SCHEDULED, null) ?: return emptyList()
         val list = mutableListOf<ScheduledRoutine>()
         try {
             val arr = JSONArray(jsonStr)
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
+                val rawTime = obj.optString("timeOfDay", "09:00")
+                val safeTime = if (TimeFormatters.isValidTimeOfDay(rawTime)) rawTime else "09:00"
+
                 list.add(
                     ScheduledRoutine(
                         id = obj.getString("id"),
@@ -543,63 +405,68 @@ class RoutineStorage(context: Context) {
                         categoryEmoji = obj.optString("categoryEmoji", "🎯"),
                         categoryColorHex = obj.optLong("categoryColorHex", 0xFF6366F1),
                         dateEpochDay = obj.getLong("dateEpochDay"),
-                        timeOfDay = obj.optString("timeOfDay", "09:00"),
+                        timeOfDay = safeTime,
                         durationMinutes = obj.optInt("durationMinutes", 30),
                         remindBeforeMinutes = obj.optInt("remindBeforeMinutes", 1),
                         remindAtTime = obj.optBoolean("remindAtTime", true),
                         vibrationPattern = obj.optString("vibrationPattern", "NOTHING_PULSE"),
                         isCompleted = obj.optBoolean("isCompleted", false),
                         createdAt = obj.optLong("createdAt", System.currentTimeMillis())
-                    )
+                    ).sanitized()
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             return emptyList()
         }
         return list
     }
 
+    @Synchronized
     fun saveScheduledRoutines(routines: List<ScheduledRoutine>) {
         val arr = JSONArray()
         for (r in routines) {
+            val clean = r.sanitized()
             val obj = JSONObject().apply {
-                put("id", r.id)
-                put("routineId", r.routineId)
-                put("routineTitle", r.routineTitle)
-                put("categoryName", r.categoryName)
-                put("categoryEmoji", r.categoryEmoji)
-                put("categoryColorHex", r.categoryColorHex)
-                put("dateEpochDay", r.dateEpochDay)
-                put("timeOfDay", r.timeOfDay)
-                put("durationMinutes", r.durationMinutes)
-                put("remindBeforeMinutes", r.remindBeforeMinutes)
-                put("remindAtTime", r.remindAtTime)
-                put("vibrationPattern", r.vibrationPattern)
-                put("isCompleted", r.isCompleted)
-                put("createdAt", r.createdAt)
+                put("id", clean.id)
+                put("routineId", clean.routineId)
+                put("routineTitle", clean.routineTitle)
+                put("categoryName", clean.categoryName)
+                put("categoryEmoji", clean.categoryEmoji)
+                put("categoryColorHex", clean.categoryColorHex)
+                put("dateEpochDay", clean.dateEpochDay)
+                put("timeOfDay", clean.timeOfDay)
+                put("durationMinutes", clean.durationMinutes)
+                put("remindBeforeMinutes", clean.remindBeforeMinutes)
+                put("remindAtTime", clean.remindAtTime)
+                put("vibrationPattern", clean.vibrationPattern)
+                put("isCompleted", clean.isCompleted)
+                put("createdAt", clean.createdAt)
             }
             arr.put(obj)
         }
         prefs.edit().putString(KEY_SCHEDULED, arr.toString()).apply()
     }
 
+    @Synchronized
     fun saveScheduledRoutine(item: ScheduledRoutine) {
         val current = getScheduledRoutines().toMutableList()
-        val index = current.indexOfFirst { it.id == item.id }
+        val clean = item.sanitized()
+        val index = current.indexOfFirst { it.id == clean.id }
         if (index >= 0) {
-            current[index] = item
+            current[index] = clean
         } else {
-            current.add(item)
+            current.add(clean)
         }
         saveScheduledRoutines(current)
     }
 
+    @Synchronized
     fun deleteScheduledRoutine(id: String) {
         val current = getScheduledRoutines().filter { it.id != id }
         saveScheduledRoutines(current)
     }
 
+    @Synchronized
     fun toggleScheduledRoutineCompleted(id: String) {
         val current = getScheduledRoutines().map {
             if (it.id == id) it.copy(isCompleted = !it.isCompleted) else it
@@ -607,13 +474,13 @@ class RoutineStorage(context: Context) {
         saveScheduledRoutines(current)
     }
 
-    // Theme Mode ("DARK", "LIGHT", "SYSTEM")
+    @Synchronized
     fun getThemeMode(): String {
         return prefs.getString(KEY_THEME_MODE, "DARK") ?: "DARK"
     }
 
+    @Synchronized
     fun setThemeMode(mode: String) {
         prefs.edit().putString(KEY_THEME_MODE, mode).apply()
     }
 }
-
