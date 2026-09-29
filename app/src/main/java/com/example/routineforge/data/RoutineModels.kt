@@ -104,6 +104,29 @@ data class CompletedSession(
 }
 
 @Immutable
+data class Note(
+    val id: String = UUID.randomUUID().toString(),
+    val text: String,
+    val pinned: Boolean = false,
+    val updatedAt: Long = System.currentTimeMillis()
+) {
+    val title: String
+        get() = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.take(60) ?: "Untitled"
+
+    val preview: String
+        get() = text.lineSequence().filter { it.isNotBlank() }.drop(1).joinToString(" ").take(140)
+}
+
+@Immutable
+data class TimerSettings(
+    val label: String = "",
+    val soundEnabled: Boolean = true,
+    val vibrationEnabled: Boolean = true,
+    val autoRepeat: Boolean = false,
+    val lastDurationSeconds: Int = 5 * 60
+)
+
+@Immutable
 data class ScheduledRoutine(
     val id: String = UUID.randomUUID().toString(),
     val routineId: String = "",

@@ -24,6 +24,36 @@ class RoutineRepository(private val storage: RoutineStorage) {
     private val _themeMode = MutableStateFlow<String>(storage.getThemeMode())
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _notes = MutableStateFlow(storage.getNotes())
+    val notes: StateFlow<List<Note>> = _notes.asStateFlow()
+
+    private val _timerSettings = MutableStateFlow(storage.getTimerSettings())
+    val timerSettings: StateFlow<TimerSettings> = _timerSettings.asStateFlow()
+
+    // ponytail: rewrites the whole notes JSON per save; move to Room if notes grow into the thousands
+    fun saveNote(note: Note) = synchronized(lock) {
+        val current = _notes.value
+        val updated = if (current.any { it.id == note.id }) {
+            current.map { if (it.id == note.id) note else it }
+        } else {
+            listOf(note) + current
+        }
+        storage.saveNotes(updated)
+        _notes.value = updated
+    }
+
+    fun deleteNote(id: String) = synchronized(lock) {
+        if (_notes.value.none { it.id == id }) return@synchronized
+        val updated = _notes.value.filter { it.id != id }
+        storage.saveNotes(updated)
+        _notes.value = updated
+    }
+
+    fun saveTimerSettings(settings: TimerSettings) = synchronized(lock) {
+        storage.saveTimerSettings(settings)
+        _timerSettings.value = settings.copy(label = settings.label.take(40))
+    }
+
     fun setThemeMode(mode: String) = synchronized(lock) {
         storage.setThemeMode(mode)
         _themeMode.value = mode
@@ -124,6 +154,7 @@ class RoutineRepository(private val storage: RoutineStorage) {
         _routines.value = emptyList()
         _sessions.value = emptyList()
         _scheduledRoutines.value = emptyList()
+        _notes.value = emptyList()
     }
 
 

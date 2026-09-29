@@ -5,6 +5,8 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.routineforge.data.RoutineCategory
+import com.example.routineforge.data.RoutineRepository
+import com.example.routineforge.data.TimerSettings
 import com.example.routineforge.service.ActiveTimerType
 import com.example.routineforge.service.TimerSessionManager
 import com.example.routineforge.util.AlertHelper
@@ -60,7 +62,8 @@ data class SpecialTimerUiState(
 }
 
 class SpecialTimerViewModel(
-    application: Application
+    application: Application,
+    private val repository: RoutineRepository
 ) : AndroidViewModel(application) {
 
     private val alertHelper = AlertHelper(application.applicationContext)
@@ -68,8 +71,22 @@ class SpecialTimerViewModel(
     private val _uiState = MutableStateFlow(SpecialTimerUiState())
     val uiState: StateFlow<SpecialTimerUiState> = _uiState.asStateFlow()
 
+    val settings: StateFlow<TimerSettings> = repository.timerSettings
+
     private var timerJob: Job? = null
     private var targetEndTime: Long = 0L
+
+    private val sessionTitle: String
+        get() = settings.value.label.ifBlank { _uiState.value.selectedCategory.name }.uppercase()
+
+    init {
+        val last = settings.value.lastDurationSeconds
+        setTime(last / 3600, (last % 3600) / 60, last % 60)
+    }
+
+    fun updateSettings(transform: (TimerSettings) -> TimerSettings) {
+        repository.saveTimerSettings(transform(settings.value))
+    }
 
     fun selectCategory(category: RoutineCategory) {
         _uiState.update { it.copy(selectedCategory = category) }
@@ -115,6 +132,9 @@ class SpecialTimerViewModel(
         val currentRemaining = _uiState.value.remainingMillis
         if (currentRemaining <= 0L) return
 
+        if (_uiState.value.status == SpecialTimerStatus.IDLE) {
+            updateSettings { it.copy(lastDurationSeconds = (_uiState.value.totalDurationMillis / 1000).toInt()) }
+        }
         targetEndTime = SystemClock.elapsedRealtime() + currentRemaining
         _uiState.update { it.copy(status = SpecialTimerStatus.RUNNING) }
 
@@ -131,18 +151,23 @@ class SpecialTimerViewModel(
                 _uiState.update { it.copy(remainingMillis = left) }
 
                 TimerSessionManager.updateSpecialTimer(
-                    title = _uiState.value.selectedCategory.name.uppercase(),
+                    title = sessionTitle,
                     colorHex = _uiState.value.selectedCategory.colorHex,
                     remainingMillis = left,
                     totalDurationMillis = _uiState.value.totalDurationMillis,
                     isRunning = true
                 )
 
+                if (left <= 0L && settings.value.autoRepeat) {
+                    alertHelper.playRoutineComplete(settings.value.soundEnabled, settings.value.vibrationEnabled)
+                    targetEndTime = SystemClock.elapsedRealtime() + _uiState.value.totalDurationMillis
+                    continue
+                }
                 if (left <= 0L) {
                     _uiState.update { it.copy(status = SpecialTimerStatus.FINISHED, remainingMillis = 0L) }
                     TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
                     // Trigger 1-second authoritative alert vibration & tone
-                    alertHelper.playRoutineComplete(soundEnabled = true, vibeEnabled = true)
+                    alertHelper.playRoutineComplete(settings.value.soundEnabled, settings.value.vibrationEnabled)
                     break
                 }
                 delay(12L) // ~60-80fps millisecond refresh
@@ -162,7 +187,7 @@ class SpecialTimerViewModel(
             )
         }
         TimerSessionManager.updateSpecialTimer(
-            title = _uiState.value.selectedCategory.name.uppercase(),
+            title = sessionTitle,
             colorHex = _uiState.value.selectedCategory.colorHex,
             remainingMillis = left,
             totalDurationMillis = _uiState.value.totalDurationMillis,

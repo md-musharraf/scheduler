@@ -21,7 +21,6 @@ data class RoutineListUiState(
     val filteredRoutines: List<Routine> = emptyList(),
     val selectedCategoryId: String? = null,
     val searchQuery: String = "",
-    val smartSuggestions: List<SmartSearchEngine.SearchSuggestion> = SmartSearchEngine.QUICK_SUGGESTIONS,
     val completedSessions: List<CompletedSession> = emptyList(),
     val themeMode: String = "DARK"
 )
@@ -65,7 +64,6 @@ class RoutineListViewModel(
             filteredRoutines = filtered,
             selectedCategoryId = catId,
             searchQuery = query,
-            smartSuggestions = SmartSearchEngine.QUICK_SUGGESTIONS,
             completedSessions = repo.sessions,
             themeMode = repo.themeMode
         )

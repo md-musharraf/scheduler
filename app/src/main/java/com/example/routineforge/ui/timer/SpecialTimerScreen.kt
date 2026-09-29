@@ -34,14 +34,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Card
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -60,6 +66,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -76,6 +84,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.routineforge.data.RoutineCategory
+import com.example.routineforge.data.TimerSettings
 import com.example.routineforge.theme.NothingRed
 import com.example.routineforge.theme.NothingRedLight
 import com.example.routineforge.theme.TabularTimerDigits
@@ -89,54 +98,34 @@ import kotlin.math.sin
 @Composable
 fun SpecialTimerScreen(
     viewModel: SpecialTimerViewModel,
-    onNavigateBack: () -> Unit,
+    onOpenStopwatch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val settings by viewModel.settings.collectAsState()
+    var showCustomize by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(NothingRed)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = "SPECIAL TIMER",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    letterSpacing = 1.sp
-                                )
-                            )
-                            Text(
-                                text = "// STANDALONE CATEGORY",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 9.sp,
-                                    color = NothingRed
-                                )
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                    Column {
+                        Text("Timer", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = settings.label.ifBlank { uiState.selectedCategory.name },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showCustomize = true }) {
+                        Icon(Icons.Filled.Tune, contentDescription = "Customize timer")
+                    }
+                    IconButton(onClick = onOpenStopwatch) {
+                        Icon(Icons.Outlined.Timer, contentDescription = "Stopwatch")
+                    }
                     val context = LocalContext.current
                     IconButton(
                         onClick = {
@@ -234,6 +223,58 @@ fun SpecialTimerScreen(
             Spacer(modifier = Modifier.height(28.dp))
         }
     }
+
+    if (showCustomize) {
+        TimerCustomizeSheet(
+            settings = settings,
+            onChange = { viewModel.updateSettings(it) },
+            onDismiss = { showCustomize = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimerCustomizeSheet(
+    settings: TimerSettings,
+    onChange: ((TimerSettings) -> TimerSettings) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
+            Text("Customize timer", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = settings.label,
+                onValueChange = { v -> onChange { it.copy(label = v.take(40)) } },
+                label = { Text("Label") },
+                placeholder = { Text("e.g. Deep work, Tea, Plank") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            SettingSwitch("Sound", "Play a tone when time is up", settings.soundEnabled) { v ->
+                onChange { it.copy(soundEnabled = v) }
+            }
+            SettingSwitch("Vibration", "Vibrate when time is up", settings.vibrationEnabled) { v ->
+                onChange { it.copy(vibrationEnabled = v) }
+            }
+            SettingSwitch("Auto-repeat", "Start again automatically (intervals)", settings.autoRepeat) { v ->
+                onChange { it.copy(autoRepeat = v) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = { Text(subtitle) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { onCheckedChange(!checked) }
+    )
 }
 
 @Composable
@@ -766,7 +807,7 @@ fun SpecialTimerControls(
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "START COUNTDOWN",
+                            text = "START",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,

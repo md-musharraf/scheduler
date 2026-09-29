@@ -3,7 +3,24 @@ package com.example.routineforge
 import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.navigation3.runtime.NavKey
+import com.example.routineforge.ui.notes.NoteEditorScreen
+import com.example.routineforge.ui.notes.NoteEditorState
+import com.example.routineforge.ui.notes.NotesScreen
+import com.example.routineforge.ui.notes.NotesViewModel
+import java.util.UUID
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,7 +79,40 @@ fun MainNavigation(
         ActiveTimerType.NONE -> true
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val tabs = listOf(
+        Triple(RoutineListNav, "Routines", Icons.AutoMirrored.Filled.ListAlt),
+        Triple(SpecialTimerNav, "Timer", Icons.Filled.Timer),
+        Triple(NotesNav, "Notes", Icons.Filled.EditNote)
+    )
+    val selectTab: (NavKey) -> Unit = { tab ->
+        // Tabs sit directly on top of the Routines root, so Back from any tab returns home.
+        while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+        if (tab != RoutineListNav) backStack.add(tab)
+    }
+
+    Scaffold(
+        contentWindowInsets = WindowInsets(0),
+        bottomBar = {
+            if (tabs.any { it.first == currentNav }) {
+                NavigationBar {
+                    tabs.forEach { (key, label, icon) ->
+                        NavigationBarItem(
+                            selected = currentNav == key,
+                            onClick = { if (currentNav != key) selectTab(key) },
+                            icon = { Icon(icon, contentDescription = null) },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+            }
+        }
+    ) { inner ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(inner)
+            .consumeWindowInsets(inner)
+    ) {
         NavDisplay(
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
@@ -84,12 +134,6 @@ fun MainNavigation(
                         },
                         onOpenCalendar = {
                             backStack.add(CalendarNav)
-                        },
-                        onOpenStopwatch = {
-                            backStack.add(StopwatchNav)
-                        },
-                        onOpenSpecialTimer = {
-                            backStack.add(SpecialTimerNav)
                         },
                         modifier = Modifier.fillMaxSize()
                     )
@@ -158,10 +202,28 @@ fun MainNavigation(
                 entry<SpecialTimerNav> {
                     val application = context.applicationContext as Application
                     val viewModel: SpecialTimerViewModel = viewModel {
-                        SpecialTimerViewModel(application)
+                        SpecialTimerViewModel(application, repository)
                     }
                     SpecialTimerScreen(
                         viewModel = viewModel,
+                        onOpenStopwatch = { backStack.add(StopwatchNav) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                entry<NotesNav> {
+                    val viewModel: NotesViewModel = viewModel { NotesViewModel(repository) }
+                    NotesScreen(
+                        viewModel = viewModel,
+                        onOpenNote = { id -> backStack.add(NoteEditorNav(id ?: UUID.randomUUID().toString())) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                entry<NoteEditorNav> { navKey ->
+                    val editor = remember(navKey.noteId) { NoteEditorState(repository, navKey.noteId) }
+                    NoteEditorScreen(
+                        editor = editor,
                         onNavigateBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.fillMaxSize()
                     )
@@ -175,7 +237,7 @@ fun MainNavigation(
                 session = activeSession,
                 onNavigateToTimer = { type, routineId ->
                     when (type) {
-                        ActiveTimerType.SPECIAL_TIMER -> backStack.add(SpecialTimerNav)
+                        ActiveTimerType.SPECIAL_TIMER -> selectTab(SpecialTimerNav)
                         ActiveTimerType.STOPWATCH -> backStack.add(StopwatchNav)
                         ActiveTimerType.ROUTINE -> if (routineId != null) backStack.add(RoutinePlayerNav(routineId))
                         ActiveTimerType.NONE -> {}
@@ -186,5 +248,6 @@ fun MainNavigation(
                     .padding(bottom = 86.dp)
             )
         }
+    }
     }
 }

@@ -24,3 +24,10 @@ data object StopwatchNav : NavKey
 @Serializable
 data object SpecialTimerNav : NavKey
 
+
+@Serializable
+data object NotesNav : NavKey
+
+/** noteId is generated up-front for new notes so the editor survives recreation. */
+@Serializable
+data class NoteEditorNav(val noteId: String) : NavKey

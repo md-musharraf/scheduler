@@ -22,6 +22,12 @@ class RoutineStorage(context: Context) {
         private const val KEY_INITIALIZED = "is_initialized_v2"
         private const val KEY_THEME_MODE = "theme_mode_key"
         private const val KEY_DATA_CLEARED = "is_data_cleared_v1"
+        private const val KEY_NOTES = "notes_json"
+        private const val KEY_TIMER_LABEL = "timer_label"
+        private const val KEY_TIMER_SOUND = "timer_sound"
+        private const val KEY_TIMER_VIBE = "timer_vibe"
+        private const val KEY_TIMER_REPEAT = "timer_repeat"
+        private const val KEY_TIMER_LAST_SEC = "timer_last_sec"
 
         val DEFAULT_CATEGORIES = listOf(
             RoutineCategory("cat_comm", "Communication Skills", "🎙️", 0xFF8B5CF6),
@@ -150,6 +156,7 @@ class RoutineStorage(context: Context) {
             .putString(KEY_ROUTINES, "[]")
             .putString(KEY_SESSIONS, "[]")
             .putString(KEY_SCHEDULED, "[]")
+            .putString(KEY_NOTES, "[]")
             .apply()
     }
 
@@ -472,6 +479,61 @@ class RoutineStorage(context: Context) {
             if (it.id == id) it.copy(isCompleted = !it.isCompleted) else it
         }
         saveScheduledRoutines(current)
+    }
+
+    // Notes
+    @Synchronized
+    fun getNotes(): List<Note> {
+        val jsonStr = prefs.getString(KEY_NOTES, null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(jsonStr)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                Note(
+                    id = obj.getString("id"),
+                    text = obj.optString("text", ""),
+                    pinned = obj.optBoolean("pinned", false),
+                    updatedAt = obj.optLong("updatedAt", System.currentTimeMillis())
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    @Synchronized
+    fun saveNotes(notes: List<Note>) {
+        val arr = JSONArray()
+        notes.forEach { n ->
+            arr.put(JSONObject().apply {
+                put("id", n.id)
+                put("text", n.text.take(20_000))
+                put("pinned", n.pinned)
+                put("updatedAt", n.updatedAt)
+            })
+        }
+        prefs.edit().putString(KEY_NOTES, arr.toString()).apply()
+    }
+
+    // Timer customization
+    @Synchronized
+    fun getTimerSettings(): TimerSettings = TimerSettings(
+        label = prefs.getString(KEY_TIMER_LABEL, "") ?: "",
+        soundEnabled = prefs.getBoolean(KEY_TIMER_SOUND, true),
+        vibrationEnabled = prefs.getBoolean(KEY_TIMER_VIBE, true),
+        autoRepeat = prefs.getBoolean(KEY_TIMER_REPEAT, false),
+        lastDurationSeconds = prefs.getInt(KEY_TIMER_LAST_SEC, 5 * 60).coerceIn(1, 86_399)
+    )
+
+    @Synchronized
+    fun saveTimerSettings(s: TimerSettings) {
+        prefs.edit()
+            .putString(KEY_TIMER_LABEL, s.label.take(40))
+            .putBoolean(KEY_TIMER_SOUND, s.soundEnabled)
+            .putBoolean(KEY_TIMER_VIBE, s.vibrationEnabled)
+            .putBoolean(KEY_TIMER_REPEAT, s.autoRepeat)
+            .putInt(KEY_TIMER_LAST_SEC, s.lastDurationSeconds.coerceIn(1, 86_399))
+            .apply()
     }
 
     @Synchronized

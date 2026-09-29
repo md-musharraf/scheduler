@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MoreVert
 
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.School
@@ -53,7 +54,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -108,11 +112,10 @@ fun RoutineListScreen(
     onEditRoutine: (String?) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenCalendar: () -> Unit,
-    onOpenStopwatch: () -> Unit,
-    onOpenSpecialTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showMenu by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var showClearDbDialog by remember { mutableStateOf(false) }
     var routineToDelete by remember { mutableStateOf<Routine?>(null) }
@@ -126,86 +129,41 @@ fun RoutineListScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
                             painter = painterResource(com.example.routineforge.R.drawable.app_brand_logo),
-                            contentDescription = "RoutineForge Logo",
+                            contentDescription = null,
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(28.dp)
                                 .clip(RoundedCornerShape(7.dp))
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Column {
-                            Text(
-                                text = "ROUTINEFORGE",
-                                maxLines = 1,
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    letterSpacing = 0.sp
-                                )
-                            )
-                            Text(
-                                text = "// PROTOCOL",
-                                maxLines = 1,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 9.sp,
-                                    color = NothingRed
-                                )
-                            )
-                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Routines", fontWeight = FontWeight.SemiBold)
                     }
                 },
                 actions = {
-                    // Nothing 1-Tap Theme Switcher
                     NothingThemeTogglePill(
                         currentMode = uiState.themeMode,
                         onToggle = { viewModel.toggleThemeMode() }
                     )
-
-                    Spacer(modifier = Modifier.width(2.dp))
-
-                    // Calendar / Schedule Planner Button
-                    IconButton(
-                        onClick = onOpenCalendar
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CalendarMonth,
-                            contentDescription = "Calendar Planner",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                    IconButton(onClick = onOpenCalendar) {
+                        Icon(Icons.Filled.CalendarMonth, contentDescription = "Calendar")
                     }
-
-                    // History / Analytics Button
-                    IconButton(
-                        onClick = onOpenHistory
-                    ) {
-                        Box {
-                            Icon(
-                                imageVector = Icons.Filled.History,
-                                contentDescription = "History",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                            if (uiState.completedSessions.isNotEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .clip(CircleShape)
-                                        .background(NothingRed)
-                                        .align(Alignment.TopEnd)
-                                )
-                            }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                         }
-                    }
-
-                    // Clear Database Action Button
-                    IconButton(
-                        onClick = { showClearDbDialog = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.DeleteSweep,
-                            contentDescription = "Clear Database",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("History & stats") },
+                                leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
+                                onClick = { showMenu = false; onOpenHistory() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Clear all data", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                },
+                                onClick = { showMenu = false; showClearDbDialog = true }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -213,23 +171,12 @@ fun RoutineListScreen(
                 )
             )
         },
-
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { onEditRoutine(null) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "New Routine", fontWeight = FontWeight.SemiBold)
-                }
-            }
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text("New routine") }
+            )
         }
     ) { paddingValues ->
         Box(
@@ -243,133 +190,60 @@ fun RoutineListScreen(
                     .fillMaxSize()
                     .widthIn(max = 680.dp)
             ) {
-            // 3-Tab Mode Switcher (Protocols, Special Timer, Stopwatch)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ModeTabPill(
-                    label = "PROTOCOLS",
-                    count = uiState.routines.size,
-                    isSelected = true,
-                    onClick = { /* already here */ },
-                    modifier = Modifier.weight(1f)
-                )
-                ModeTabPill(
-                    label = "TIMER",
-                    count = null,
-                    isSelected = false,
-                    onClick = onOpenSpecialTimer,
-                    modifier = Modifier.weight(1f)
-                )
-                ModeTabPill(
-                    label = "STOPWATCH",
-                    count = null,
-                    isSelected = false,
-                    onClick = onOpenStopwatch,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Search Bar
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
-                placeholder = { Text("Search routines, exercises, topics...") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear")
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            // AI Smart Search Prompt Chips
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                uiState.smartSuggestions.forEach { suggestion ->
-                    val isSelected = uiState.searchQuery.equals(suggestion.query, ignoreCase = true)
-                    NothingPillTag(
-                        text = suggestion.label,
-                        isHighlight = isSelected,
-                        leadingDotColor = if (isSelected) NothingRed else null,
-                        modifier = Modifier.clickable {
-                            if (isSelected) {
-                                viewModel.updateSearchQuery("")
-                            } else {
-                                viewModel.updateSearchQuery(suggestion.query)
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    placeholder = { Text("Search routines") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Clear search")
                             }
                         }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+
+                CategoryChipsRow(
+                    categories = uiState.categories,
+                    selectedCategoryId = uiState.selectedCategoryId,
+                    onSelectCategory = { viewModel.selectCategory(it) },
+                    onAddCategoryClick = { showAddCategoryDialog = true },
+                    onDeleteCategory = { viewModel.deleteCategory(it) }
+                )
+
+                if (uiState.filteredRoutines.isEmpty()) {
+                    EmptyRoutineState(
+                        selectedCategory = uiState.categories.firstOrNull { it.id == uiState.selectedCategoryId },
+                        onCreateRoutine = { onEditRoutine(null) }
                     )
-                }
-            }
-
-            // Category Filter Chips
-            CategoryChipsRow(
-                categories = uiState.categories,
-                selectedCategoryId = uiState.selectedCategoryId,
-                onSelectCategory = { viewModel.selectCategory(it) },
-                onAddCategoryClick = { showAddCategoryDialog = true },
-                onDeleteCategory = { viewModel.deleteCategory(it) }
-            )
-
-            if (uiState.searchQuery.isNotBlank()) {
-                NothingSectionHeader(
-                    index = "${uiState.filteredRoutines.size}",
-                    title = "AI Matches: \"${uiState.searchQuery}\""
-                )
-            }
-
-            // Routine List
-            if (uiState.filteredRoutines.isEmpty()) {
-                EmptyRoutineState(
-                    selectedCategory = uiState.categories.firstOrNull { it.id == uiState.selectedCategoryId },
-                    onCreateRoutine = { onEditRoutine(null) }
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    items(uiState.filteredRoutines, key = { it.id }) { routine ->
-                        val category = uiState.categories.firstOrNull { it.id == routine.categoryId }
-                        RoutineCard(
-                            routine = routine,
-                            category = category,
-                            onPlay = { onStartRoutine(routine.id) },
-                            onEdit = { onEditRoutine(routine.id) },
-                            onDuplicate = { viewModel.duplicateRoutine(routine) },
-                            onSchedule = { routineToSchedule = routine },
-                            onDelete = { routineToDelete = routine }
-                        )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(uiState.filteredRoutines, key = { it.id }) { routine ->
+                            RoutineCard(
+                                routine = routine,
+                                category = uiState.categories.firstOrNull { it.id == routine.categoryId },
+                                onPlay = { onStartRoutine(routine.id) },
+                                onEdit = { onEditRoutine(routine.id) },
+                                onDuplicate = { viewModel.duplicateRoutine(routine) },
+                                onSchedule = { routineToSchedule = routine },
+                                onDelete = { routineToDelete = routine }
+                            )
+                        }
                     }
                 }
             }
         }
     }
-}
-
 
     // Delete Confirmation Dialog
     if (routineToDelete != null) {
@@ -435,7 +309,7 @@ fun RoutineListScreen(
             },
             text = {
                 Text(
-                    text = "This will permanently delete all routines, sessions, and schedules so you can start completely fresh. Are you sure?",
+                    text = "This will permanently delete all routines, notes, sessions, and schedules so you can start completely fresh. Are you sure?",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -458,188 +332,6 @@ fun RoutineListScreen(
         )
     }
 }
-
-@Composable
-fun ModeTabPill(
-    label: String,
-    count: Int?,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        contentColor = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant,
-        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-        modifier = modifier
-            .height(36.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(NothingRed)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.5.sp
-                )
-            )
-            if (count != null && count > 0) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "($count)",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp,
-                        color = if (isSelected) MaterialTheme.colorScheme.surface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun StatsSummaryBanner(
-    totalRoutines: Int,
-    completedSessions: Int,
-    onOpenHistory: () -> Unit,
-    onOpenCalendar: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(16.dp)
-            )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp)
-                    .clickable { onOpenHistory() }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(NothingRed)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = "$totalRoutines PROTOCOLS",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Text(
-                        text = if (completedSessions > 0) "$completedSessions SESSIONS FINISHED" else "SYS // READY",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 9.5.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                        .clickable { onOpenCalendar() }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.CalendarMonth,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "CALENDAR",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 9.5.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                        .clickable { onOpenHistory() }
-                ) {
-                    Text(
-                        text = "STATS →",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.5.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -774,186 +466,82 @@ fun RoutineCard(
     onSchedule: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val workSteps = routine.steps.count { it.stepType == StepType.WORK }
-    val restSteps = routine.steps.count { it.stepType == StepType.REST }
+    var showMenu by remember { mutableStateOf(false) }
+    val accent = Color(category?.colorHex ?: routine.colorHex)
+    val stepCount = routine.steps.size
 
     Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(18.dp)
-            )
+        onClick = onPlay,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = CardDefaults.outlinedCardBorder(),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Category badge & Action menu
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
             ) {
-                category?.let {
-                    Box(modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)) {
-                        NothingPillTag(
-                            text = it.name.uppercase(),
-                            leadingDotColor = NothingRed
-                        )
-                    }
-                } ?: Spacer(modifier = Modifier.width(1.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(
-                        onClick = onSchedule,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.CalendarMonth,
-                            contentDescription = "Schedule Routine",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(
-                        onClick = onDuplicate,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.ContentCopy,
-                            contentDescription = "Duplicate",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(
-                        onClick = onEdit,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Edit,
-                            contentDescription = "Edit",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Delete,
-                            contentDescription = "Delete",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                        )
-                    }
-                }
+                Text(category?.emoji ?: "⏱", fontSize = 20.sp)
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Routine Title
-            Text(
-                text = routine.title,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            )
-
-            // Routine Description
-            if (routine.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = routine.description,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = routine.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = listOfNotNull(
+                        routine.formattedDuration,
+                        if (stepCount == 1) "1 step" else "$stepCount steps",
+                        category?.name
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            NothingDottedDivider()
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Steps overview chips (Responsive horizontal scroll)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                NothingPillTag(
-                    text = "[ ${routine.formattedDuration} ]",
-                    isHighlight = true
-                )
-
-                NothingPillTag(
-                    text = "[ ${routine.steps.size} STEPS ]"
-                )
-
-                if (workSteps > 0) {
-                    NothingPillTag(
-                        text = "$workSteps WORK",
-                        leadingDotColor = NothingRed
-                    )
-                }
-
-                if (restSteps > 0) {
-                    NothingPillTag(
-                        text = "$restSteps REST",
-                        leadingDotColor = RestColor
-                    )
-                }
+            FilledIconButton(onClick = onPlay) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = "Start ${routine.title}")
             }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Start Countdown Timer Button (Nothing OS Stark Pill Button)
-            Button(
-                onClick = onPlay,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                )
-            ) {
-                Icon(
-                    Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "START PROTOCOL",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        fontSize = 13.sp,
-                        color = Color.White
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Routine options")
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        onClick = { showMenu = false; onEdit() }
                     )
-                )
+                    DropdownMenuItem(
+                        text = { Text("Schedule") },
+                        leadingIcon = { Icon(Icons.Filled.CalendarMonth, contentDescription = null) },
+                        onClick = { showMenu = false; onSchedule() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Duplicate") },
+                        leadingIcon = { Icon(Icons.Filled.ContentCopy, contentDescription = null) },
+                        onClick = { showMenu = false; onDuplicate() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        },
+                        onClick = { showMenu = false; onDelete() }
+                    )
+                }
             }
         }
     }

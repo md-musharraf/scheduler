@@ -14,21 +14,6 @@ import java.util.Locale
  */
 object SmartSearchEngine {
 
-    data class SearchSuggestion(
-        val label: String,
-        val query: String,
-        val categoryId: String? = null
-    )
-
-    val QUICK_SUGGESTIONS = listOf(
-        SearchSuggestion("✨ Quick (< 30m)", "quick"),
-        SearchSuggestion("💪 Workout", "workout"),
-        SearchSuggestion("🧠 Deep Study", "study"),
-        SearchSuggestion("🎙️ Speech & English", "english"),
-        SearchSuggestion("🧘 Calm & Reset", "calm"),
-        SearchSuggestion("💻 Coding Sprint", "coding")
-    )
-
     private val INTENT_SYNONYMS: Map<String, List<String>> = mapOf(
         "workout" to listOf("gym", "exercise", "lifting", "chest", "arms", "pushups", "squats", "hiit", "fitness", "cardio", "bodybuilding"),
         "coding" to listOf("code", "programming", "developer", "dev", "dsa", "leetcode", "software", "algorithms", "bug"),
