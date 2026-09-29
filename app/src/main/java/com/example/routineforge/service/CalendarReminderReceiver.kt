@@ -8,202 +8,134 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.os.Build
-import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.example.routineforge.MainActivity
 import com.example.routineforge.R
 import com.example.routineforge.data.RoutineRepository
-import com.example.routineforge.util.HapticFeedbackManager
+import com.example.routineforge.data.ScheduledRoutine
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 class CalendarReminderReceiver : BroadcastReceiver() {
 
-    companion object {
-        const val CHANNEL_ID = "calendar_routine_reminders_channel_v1"
-        const val CHANNEL_NAME = "Routine Calendar Reminders"
-    }
-
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null) return
+        val taskId = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_TASK_ID) ?: return
+        val repository = RoutineRepository.getInstance(context)
+        val task = repository.scheduledRoutines.value.firstOrNull { it.id == taskId }
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
 
         when (intent.action) {
             CalendarAlarmScheduler.ACTION_CALENDAR_REMINDER -> {
-                val taskId = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_TASK_ID) ?: return
-                val taskTitle = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_TASK_TITLE) ?: "Task"
-                val categoryName = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_CATEGORY_NAME) ?: "Routine"
-                val categoryEmoji = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_CATEGORY_EMOJI) ?: "🎯"
-                val isPreReminder = intent.getBooleanExtra(CalendarAlarmScheduler.EXTRA_IS_PRE_REMINDER, false)
-                val patternName = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_VIBRATION_PATTERN) ?: HapticFeedbackManager.PATTERN_NOTHING_PULSE
-                val routineId = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_ROUTINE_ID) ?: ""
-
-                handleAlarmAlert(
-                    context = context,
-                    taskId = taskId,
-                    taskTitle = taskTitle,
-                    categoryName = categoryName,
-                    categoryEmoji = categoryEmoji,
-                    isPreReminder = isPreReminder,
-                    patternName = patternName,
-                    routineId = routineId
-                )
+                if (task == null || task.isCompleted) return
+                val isPre = intent.getBooleanExtra(CalendarAlarmScheduler.EXTRA_IS_PRE_REMINDER, false)
+                nm.notify(notificationId(taskId), buildNotification(context, nm, task.sanitized(), isPre))
+                if (!isPre && task.isRepeating) {
+                    // Queue the next occurrence (+1 min so this one isn't picked again).
+                    CalendarAlarmScheduler.scheduleAlarmsForTask(context, task, LocalDateTime.now().plusMinutes(1))
+                }
             }
 
             CalendarAlarmScheduler.ACTION_CALENDAR_MARK_DONE -> {
-                val taskId = intent.getStringExtra(CalendarAlarmScheduler.EXTRA_TASK_ID) ?: return
-                val repository = RoutineRepository.getInstance(context)
-                repository.toggleScheduledCompleted(taskId)
-
-                // Cancel notification safely
-                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                notificationManager?.cancel(taskId.hashCode())
-            }
-        }
-    }
-
-    private fun handleAlarmAlert(
-        context: Context,
-        taskId: String,
-        taskTitle: String,
-        categoryName: String,
-        categoryEmoji: String,
-        isPreReminder: Boolean,
-        patternName: String,
-        routineId: String
-    ) {
-        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-        val wakeLock = powerManager?.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "RoutineForge:CalendarAlarmWakeLock"
-        )
-        try {
-            wakeLock?.acquire(10_000L) // 10s maximum timeout
-
-            // 1) Trigger authoritative haptic pattern via DRY HapticFeedbackManager
-            HapticFeedbackManager.vibratePattern(context, patternName, isPreReminder)
-
-            // 2) Show High-Priority Heads-Up Notification
-            createNotificationChannel(context)
-            showReminderNotification(
-                context = context,
-                taskId = taskId,
-                taskTitle = taskTitle,
-                categoryName = categoryName,
-                categoryEmoji = categoryEmoji,
-                isPreReminder = isPreReminder,
-                routineId = routineId
-            )
-        } finally {
-            if (wakeLock?.isHeld == true) {
-                try {
-                    wakeLock.release()
-                } catch (_: Exception) {
+                nm.cancel(notificationId(taskId))
+                // Repeating reminders stay active; "Done" just dismisses this occurrence.
+                if (task != null && !task.isRepeating) {
+                    repository.setScheduledCompleted(taskId, true)
+                    CalendarAlarmScheduler.cancelAlarmsForTask(context, taskId)
                 }
             }
         }
     }
 
-    private fun createNotificationChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-            val existing = notificationManager.getNotificationChannel(CHANNEL_ID)
-            if (existing == null) {
-                val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                val audioAttributes = AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .build()
-
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "High priority vibration & heads-up alarms for scheduled tasks"
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 400, 200, 400)
-                    setSound(soundUri, audioAttributes)
-                    lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
-                }
-                notificationManager.createNotificationChannel(channel)
-            }
-        }
-    }
-
-    private fun showReminderNotification(
+    private fun buildNotification(
         context: Context,
-        taskId: String,
-        taskTitle: String,
-        categoryName: String,
-        categoryEmoji: String,
-        isPreReminder: Boolean,
-        routineId: String
-    ) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        nm: NotificationManager,
+        task: ScheduledRoutine,
+        isPre: Boolean
+    ): android.app.Notification {
+        val title = task.routineTitle.ifBlank { task.categoryName }
+        val time = LocalTime.parse(task.timeOfDay).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        val body = listOf(if (isPre) "Starts at $time" else "Now · $time", task.note)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
 
-        // Tap on notification -> Open app securely with explicit package
-        val openIntent = Intent(context, MainActivity::class.java).apply {
-            setPackage(context.packageName)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            if (routineId.isNotBlank()) {
-                putExtra("extra_start_routine_id", routineId)
-            } else {
-                putExtra("target_nav", "CALENDAR")
-            }
-        }
-        val contentPendingIntent = PendingIntent.getActivity(
+        val open = PendingIntent.getActivity(
             context,
-            taskId.hashCode(),
-            openIntent,
+            task.id.hashCode(),
+            MainActivity.launchIntent(context, MainActivity.NAV_SCHEDULE),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val done = PendingIntent.getBroadcast(
+            context,
+            task.id.hashCode() + 500,
+            Intent(context, CalendarReminderReceiver::class.java).apply {
+                action = CalendarAlarmScheduler.ACTION_CALENDAR_MARK_DONE
+                putExtra(CalendarAlarmScheduler.EXTRA_TASK_ID, task.id)
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action: Mark Done directly with explicit package and class
-        val markDoneIntent = Intent(context, CalendarReminderReceiver::class.java).apply {
-            setPackage(context.packageName)
-            action = CalendarAlarmScheduler.ACTION_CALENDAR_MARK_DONE
-            putExtra(CalendarAlarmScheduler.EXTRA_TASK_ID, taskId)
-        }
-        val markDonePendingIntent = PendingIntent.getBroadcast(
-            context,
-            taskId.hashCode() + 500,
-            markDoneIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val title = if (isPreReminder) {
-            "⏰ In 1 Minute: $taskTitle"
-        } else {
-            "⚡ Routine Time: $taskTitle"
-        }
-
-        val body = if (isPreReminder) {
-            "$categoryEmoji $categoryName starts in 1 min. Get prepared!"
-        } else {
-            "$categoryEmoji $categoryName • Starting now. Stay consistent!"
-        }
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
+        val builder = NotificationCompat.Builder(context, channelFor(nm, task.soundEnabled, task.vibrationEnabled))
+            .setSmallIcon(R.drawable.ic_notification_timer)
+            .setContentTitle(if (isPre) "In ${task.remindBeforeMinutes} min: $title" else title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
-            .setContentIntent(contentPendingIntent)
-            .addAction(
-                R.mipmap.ic_launcher,
-                if (routineId.isNotBlank()) "START NOW" else "OPEN CALENDAR",
-                contentPendingIntent
-            )
-            .addAction(
-                R.mipmap.ic_launcher,
-                "MARK DONE",
-                markDonePendingIntent
-            )
-            .build()
+            .setContentIntent(open)
 
-        notificationManager.notify(taskId.hashCode(), notification)
+        if (task.durationMinutes > 0) {
+            val startTimer = PendingIntent.getActivity(
+                context,
+                task.id.hashCode() + 700,
+                MainActivity.timerIntent(context, title, task.durationMinutes * 60),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(R.drawable.ic_notif_play, "Start ${task.durationMinutes}-min timer", startTimer)
+        }
+        builder.addAction(R.drawable.ic_notif_close, "Done", done)
+        return builder.build()
+    }
+
+    /** Channel sound/vibration can't change after creation, so each alert style gets its own channel. */
+    private fun channelFor(nm: NotificationManager, sound: Boolean, vibrate: Boolean): String {
+        val (id, name) = when {
+            sound && vibrate -> "reminders_sound_vibe" to "Reminders"
+            vibrate -> "reminders_vibe_only" to "Reminders (vibrate only)"
+            else -> "reminders_sound_only" to "Reminders (sound only)"
+        }
+        if (nm.getNotificationChannel(id) == null) {
+            nm.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+            nm.createNotificationChannel(
+                NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Date and time reminders you schedule"
+                    lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+                    enableVibration(vibrate)
+                    if (vibrate) vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 600)
+                    if (sound) {
+                        setSound(
+                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                            AudioAttributes.Builder()
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                                .build()
+                        )
+                    } else {
+                        setSound(null, null)
+                    }
+                }
+            )
+        }
+        return id
+    }
+
+    private fun notificationId(taskId: String) = taskId.hashCode()
+
+    private companion object {
+        const val LEGACY_CHANNEL_ID = "calendar_routine_reminders_channel_v1"
     }
 }

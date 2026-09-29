@@ -1,6 +1,8 @@
 package com.example.routineforge
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -20,16 +22,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.example.routineforge.data.RoutineRepository
+import com.example.routineforge.service.CalendarAlarmScheduler
 import com.example.routineforge.service.TimerSessionManager
+import com.example.routineforge.widget.NothingTimerWidgetProvider
 import com.example.routineforge.theme.RoutineForgeTheme
 import com.example.routineforge.ui.components.PipMiniTimerScreen
 
 class MainActivity : ComponentActivity() {
   private val isInPipMode = mutableStateOf(false)
+  /** Latest deep link (notification, widget); cleared once navigation has handled it. */
+  private val pendingLaunch = mutableStateOf<Intent?>(null)
 
-  override fun onNewIntent(intent: android.content.Intent) {
+  companion object {
+    const val NAV_SCHEDULE = "SCHEDULE"
+    const val EXTRA_TIMER_SECONDS = "extra_timer_seconds"
+    const val EXTRA_TIMER_LABEL = "extra_timer_label"
+
+    fun launchIntent(context: Context, targetNav: String): Intent =
+      Intent(context, MainActivity::class.java).apply {
+        setPackage(context.packageName)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        putExtra(NothingTimerWidgetProvider.EXTRA_TARGET_NAV, targetNav)
+      }
+
+    fun timerIntent(context: Context, label: String, seconds: Int): Intent =
+      launchIntent(context, NothingTimerWidgetProvider.NAV_SPECIAL_TIMER)
+        .putExtra(EXTRA_TIMER_LABEL, label)
+        .putExtra(EXTRA_TIMER_SECONDS, seconds)
+  }
+
+  override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
+    pendingLaunch.value = intent
   }
 
   override fun onPictureInPictureModeChanged(
@@ -57,6 +82,9 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     TimerSessionManager.appContext = applicationContext
+    // Force-stop / "clear recents" on some phones wipes alarms; re-arm them on every launch.
+    CalendarAlarmScheduler.rescheduleAllUpcoming(applicationContext)
+    if (savedInstanceState == null) pendingLaunch.value = intent
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -83,20 +111,14 @@ class MainActivity : ComponentActivity() {
           else -> isSystemDark
         }
 
-        val initialRoutineId = remember {
-          intent?.getStringExtra(com.example.routineforge.service.RoutineTimerService.EXTRA_ROUTINE_ID)
-            ?: intent?.getStringExtra("ROUTINE_ID")
-        }
-        val targetNav = remember {
-          intent?.getStringExtra(com.example.routineforge.widget.NothingTimerWidgetProvider.EXTRA_TARGET_NAV)
-        }
+        val launch by pendingLaunch
 
         RoutineForgeTheme(darkTheme = isDark) {
           Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
           ) {
-            MainNavigation(initialRoutineId = initialRoutineId, targetNav = targetNav)
+            MainNavigation(launch = launch, onLaunchHandled = { pendingLaunch.value = null })
           }
         }
       }

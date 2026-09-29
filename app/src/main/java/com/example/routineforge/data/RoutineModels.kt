@@ -2,6 +2,10 @@ package com.example.routineforge.data
 
 import androidx.compose.runtime.Immutable
 import com.example.routineforge.util.TimeFormatters
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 enum class StepType {
@@ -141,9 +145,42 @@ data class ScheduledRoutine(
     val remindAtTime: Boolean = true, // Alert at exact scheduled time
     val vibrationPattern: String = "NOTHING_PULSE",
     val isCompleted: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val repeat: String = REPEAT_NONE, // NONE / DAILY / WEEKLY / MONTHLY
+    val soundEnabled: Boolean = true,
+    val vibrationEnabled: Boolean = true,
+    val note: String = ""
 ) {
+    companion object {
+        const val REPEAT_NONE = "NONE"
+        const val REPEAT_DAILY = "DAILY"
+        const val REPEAT_WEEKLY = "WEEKLY"
+        const val REPEAT_MONTHLY = "MONTHLY"
+        val REPEAT_OPTIONS = listOf(REPEAT_NONE, REPEAT_DAILY, REPEAT_WEEKLY, REPEAT_MONTHLY)
+    }
+
+    val isRepeating: Boolean get() = repeat != REPEAT_NONE
+
     fun formattedDuration(): String = TimeFormatters.formatDurationMinutes(durationMinutes)
+
+    /** The first start time strictly after [after], or null if a one-off reminder is already past. */
+    fun nextOccurrence(after: LocalDateTime): LocalDateTime? {
+        val start = LocalDate.ofEpochDay(dateEpochDay).atTime(LocalTime.parse(sanitized().timeOfDay))
+        if (start.isAfter(after)) return start
+        if (!isRepeating) return null
+        // Step from the original start each time so monthly Jan 31 → Feb 28 → Mar 31 stays anchored.
+        // Daily jumps straight to ~today; weekly/monthly loop at most ~52/12 times per elapsed year.
+        var k = if (repeat == REPEAT_DAILY) maxOf(1L, ChronoUnit.DAYS.between(start, after)) else 1L
+        while (true) {
+            val next = when (repeat) {
+                REPEAT_DAILY -> start.plusDays(k)
+                REPEAT_WEEKLY -> start.plusWeeks(k)
+                else -> start.plusMonths(k)
+            }
+            if (next.isAfter(after)) return next
+            k++
+        }
+    }
 
     fun sanitized(): ScheduledRoutine {
         val safeTime = if (TimeFormatters.isValidTimeOfDay(timeOfDay)) timeOfDay else "09:00"
@@ -151,8 +188,11 @@ data class ScheduledRoutine(
             routineTitle = routineTitle.trim().take(80),
             categoryName = categoryName.trim().take(40),
             timeOfDay = safeTime,
-            durationMinutes = durationMinutes.coerceIn(1, 1440),
-            remindBeforeMinutes = remindBeforeMinutes.coerceIn(0, 120)
+            durationMinutes = durationMinutes.coerceIn(0, 1440),
+            remindBeforeMinutes = remindBeforeMinutes.coerceIn(0, 120),
+            repeat = if (repeat in REPEAT_OPTIONS) repeat else REPEAT_NONE,
+            vibrationEnabled = vibrationEnabled || !soundEnabled, // never fully silent
+            note = note.trim().take(500)
         )
     }
 }

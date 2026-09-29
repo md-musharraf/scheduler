@@ -190,6 +190,7 @@ fun SpecialTimerScreen(
                     // Active Running / Paused / Finished Dial
                     SpecialTimerDial(
                         uiState = uiState,
+                        label = settings.label.ifBlank { uiState.selectedCategory.name },
                         modifier = Modifier.size(290.dp)
                     )
                 }
@@ -363,13 +364,9 @@ fun WheelTimePickerSection(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "// SET DURATION",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    color = NothingRed,
-                    letterSpacing = 1.sp
-                )
+                text = "Set duration",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -384,7 +381,7 @@ fun WheelTimePickerSection(
                     range = 0..23,
                     selectedValue = selectedHours,
                     onValueSelected = { onTimeChanged(it, selectedMinutes, selectedSeconds) },
-                    unitLabel = "HRS"
+                    unitLabel = "hours"
                 )
 
                 Text(
@@ -400,7 +397,7 @@ fun WheelTimePickerSection(
                     range = 0..59,
                     selectedValue = selectedMinutes,
                     onValueSelected = { onTimeChanged(selectedHours, it, selectedSeconds) },
-                    unitLabel = "MIN"
+                    unitLabel = "min"
                 )
 
                 Text(
@@ -416,7 +413,7 @@ fun WheelTimePickerSection(
                     range = 0..59,
                     selectedValue = selectedSeconds,
                     onValueSelected = { onTimeChanged(selectedHours, selectedMinutes, it) },
-                    unitLabel = "SEC"
+                    unitLabel = "sec"
                 )
             }
 
@@ -424,12 +421,9 @@ fun WheelTimePickerSection(
 
             // Quick Preset Buttons
             Text(
-                text = "QUICK PRESETS",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                text = "Quick add",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -633,6 +627,7 @@ fun QuickAddChip(
 @Composable
 fun SpecialTimerDial(
     uiState: SpecialTimerUiState,
+    label: String,
     modifier: Modifier = Modifier
 ) {
     val trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
@@ -723,7 +718,7 @@ fun SpecialTimerDial(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = uiState.selectedCategory.name.uppercase(),
+                        text = label.uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
@@ -756,10 +751,10 @@ fun SpecialTimerDial(
             // State label
             Text(
                 text = when (uiState.status) {
-                    SpecialTimerStatus.RUNNING -> "// COUNTING DOWN"
-                    SpecialTimerStatus.PAUSED -> "// PAUSED"
-                    SpecialTimerStatus.FINISHED -> "// TIME COMPLETED"
-                    SpecialTimerStatus.IDLE -> "// READY"
+                    SpecialTimerStatus.RUNNING -> "Running"
+                    SpecialTimerStatus.PAUSED -> "Paused"
+                    SpecialTimerStatus.FINISHED -> "Time's up"
+                    SpecialTimerStatus.IDLE -> "Ready"
                 },
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = FontFamily.Monospace,

@@ -74,8 +74,8 @@ class RoutineRepository(private val storage: RoutineStorage) {
         _scheduledRoutines.value = storage.getScheduledRoutines()
     }
 
-    fun toggleScheduledCompleted(id: String) = synchronized(lock) {
-        storage.toggleScheduledRoutineCompleted(id)
+    fun setScheduledCompleted(id: String, done: Boolean) = synchronized(lock) {
+        storage.setScheduledRoutineCompleted(id, done)
         _scheduledRoutines.value = storage.getScheduledRoutines()
     }
 

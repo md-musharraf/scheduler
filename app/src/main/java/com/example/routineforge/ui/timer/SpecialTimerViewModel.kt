@@ -213,6 +213,16 @@ class SpecialTimerViewModel(
         TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
     }
 
+    /** Used by reminder notifications: replaces whatever is on the timer and starts it. */
+    fun startWith(label: String, seconds: Int) {
+        if (seconds <= 0) return
+        timerJob?.cancel()
+        _uiState.update { it.copy(status = SpecialTimerStatus.IDLE) }
+        updateSettings { it.copy(label = label.take(40)) }
+        setTime(seconds / 3600, (seconds % 3600) / 60, seconds % 60)
+        start()
+    }
+
     fun restart() {
         reset()
         start()

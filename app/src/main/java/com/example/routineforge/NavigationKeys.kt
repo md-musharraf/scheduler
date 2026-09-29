@@ -31,3 +31,7 @@ data object NotesNav : NavKey
 /** noteId is generated up-front for new notes so the editor survives recreation. */
 @Serializable
 data class NoteEditorNav(val noteId: String) : NavKey
+
+/** reminderId = null → new reminder; routineId pre-fills it from a routine. */
+@Serializable
+data class ReminderEditorNav(val reminderId: String? = null, val routineId: String? = null) : NavKey

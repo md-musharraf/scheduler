@@ -32,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
@@ -110,62 +111,24 @@ fun RoutineListScreen(
     viewModel: RoutineListViewModel,
     onStartRoutine: (String) -> Unit,
     onEditRoutine: (String?) -> Unit,
-    onOpenHistory: () -> Unit,
-    onOpenCalendar: () -> Unit,
+    onScheduleRoutine: (String) -> Unit,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showMenu by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var showClearDbDialog by remember { mutableStateOf(false) }
     var routineToDelete by remember { mutableStateOf<Routine?>(null) }
-    var routineToSchedule by remember { mutableStateOf<Routine?>(null) }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(com.example.routineforge.R.drawable.app_brand_logo),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(7.dp))
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("Routines", fontWeight = FontWeight.SemiBold)
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    NothingThemeTogglePill(
-                        currentMode = uiState.themeMode,
-                        onToggle = { viewModel.toggleThemeMode() }
-                    )
-                    IconButton(onClick = onOpenCalendar) {
-                        Icon(Icons.Filled.CalendarMonth, contentDescription = "Calendar")
-                    }
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                        }
-                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text("History & stats") },
-                                leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
-                                onClick = { showMenu = false; onOpenHistory() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Clear all data", color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = {
-                                    Icon(Icons.Filled.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                },
-                                onClick = { showMenu = false; showClearDbDialog = true }
-                            )
-                        }
-                    }
-                },
+                title = { Text("Routines", fontWeight = FontWeight.SemiBold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -235,7 +198,7 @@ fun RoutineListScreen(
                                 onPlay = { onStartRoutine(routine.id) },
                                 onEdit = { onEditRoutine(routine.id) },
                                 onDuplicate = { viewModel.duplicateRoutine(routine) },
-                                onSchedule = { routineToSchedule = routine },
+                                onSchedule = { onScheduleRoutine(routine.id) },
                                 onDelete = { routineToDelete = routine }
                             )
                         }
@@ -276,58 +239,6 @@ fun RoutineListScreen(
             onAdd = { name, emoji, colorHex ->
                 viewModel.addCustomCategory(name, emoji, colorHex)
                 showAddCategoryDialog = false
-            }
-        )
-    }
-
-    // Quick Schedule Dialog
-    if (routineToSchedule != null) {
-        val routine = routineToSchedule!!
-        val context = androidx.compose.ui.platform.LocalContext.current
-        QuickScheduleDialog(
-            routine = routine,
-            onDismiss = { routineToSchedule = null },
-            onConfirm = { dateEpochDay, timeStr ->
-                viewModel.scheduleRoutine(context, routine, dateEpochDay, timeStr)
-                routineToSchedule = null
-            }
-        )
-    }
-
-    // Clear All Data Confirmation Dialog
-    if (showClearDbDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDbDialog = false },
-            title = {
-                Text(
-                    text = "CLEAR DATABASE?",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            },
-            text = {
-                Text(
-                    text = "This will permanently delete all routines, notes, sessions, and schedules so you can start completely fresh. Are you sure?",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.clearAllData()
-                        showClearDbDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = NothingRed)
-                ) {
-                    Text("Clear All Data", fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDbDialog = false }) {
-                    Text("Cancel")
-                }
             }
         )
     }
@@ -706,140 +617,3 @@ fun AddCategoryDialog(
         }
     )
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QuickScheduleDialog(
-    routine: Routine,
-    onDismiss: () -> Unit,
-    onConfirm: (dateEpochDay: Long, timeOfDay: String) -> Unit
-) {
-    val today = remember { LocalDate.now() }
-    var selectedDate by remember { mutableStateOf(today) }
-    var timeOfDay by remember { mutableStateOf("09:00") }
-    val quickTimes = listOf("07:00", "09:00", "14:00", "18:00", "21:00")
-    val dayOptions = remember {
-        listOf(
-            "Today" to today,
-            "Tomorrow" to today.plusDays(1),
-            "+2 Days" to today.plusDays(2),
-            "+3 Days" to today.plusDays(3),
-            "Next Week" to today.plusDays(7)
-        )
-    }
-
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("EEE, MMM d") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text(
-                    text = "Schedule Routine",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = routine.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = "Select Day:",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    dayOptions.forEach { (label, date) ->
-                        FilterChip(
-                            selected = selectedDate == date,
-                            onClick = { selectedDate = date },
-                            label = { Text(label, fontSize = 12.sp) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Selected: ${selectedDate.format(dateFormatter)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Select Time:",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    quickTimes.forEach { qTime ->
-                        FilterChip(
-                            selected = timeOfDay == qTime,
-                            onClick = { timeOfDay = qTime },
-                            label = { Text(qTime, fontSize = 12.sp) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onSecondary
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = timeOfDay,
-                    onValueChange = { timeOfDay = it },
-                    label = { Text("Custom Time (HH:mm)") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm(selectedDate.toEpochDay(), timeOfDay.trim().ifEmpty { "09:00" })
-                },
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Schedule")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-

@@ -418,7 +418,11 @@ class RoutineStorage(context: Context) {
                         remindAtTime = obj.optBoolean("remindAtTime", true),
                         vibrationPattern = obj.optString("vibrationPattern", "NOTHING_PULSE"),
                         isCompleted = obj.optBoolean("isCompleted", false),
-                        createdAt = obj.optLong("createdAt", System.currentTimeMillis())
+                        createdAt = obj.optLong("createdAt", System.currentTimeMillis()),
+                        repeat = obj.optString("repeat", ScheduledRoutine.REPEAT_NONE),
+                        soundEnabled = obj.optBoolean("soundEnabled", true),
+                        vibrationEnabled = obj.optBoolean("vibrationEnabled", true),
+                        note = obj.optString("note", "")
                     ).sanitized()
                 )
             }
@@ -448,6 +452,10 @@ class RoutineStorage(context: Context) {
                 put("vibrationPattern", clean.vibrationPattern)
                 put("isCompleted", clean.isCompleted)
                 put("createdAt", clean.createdAt)
+                put("repeat", clean.repeat)
+                put("soundEnabled", clean.soundEnabled)
+                put("vibrationEnabled", clean.vibrationEnabled)
+                put("note", clean.note)
             }
             arr.put(obj)
         }
@@ -474,9 +482,9 @@ class RoutineStorage(context: Context) {
     }
 
     @Synchronized
-    fun toggleScheduledRoutineCompleted(id: String) {
+    fun setScheduledRoutineCompleted(id: String, done: Boolean) {
         val current = getScheduledRoutines().map {
-            if (it.id == id) it.copy(isCompleted = !it.isCompleted) else it
+            if (it.id == id) it.copy(isCompleted = done) else it
         }
         saveScheduledRoutines(current)
     }

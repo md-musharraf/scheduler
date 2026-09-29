@@ -73,10 +73,6 @@ class RoutineListViewModel(
         RoutineListUiState()
     )
 
-    fun toggleThemeMode() {
-        repository.toggleThemeMode()
-    }
-
     fun selectCategory(categoryId: String?) {
         selectedCategoryId.value = categoryId
     }
@@ -124,42 +120,4 @@ class RoutineListViewModel(
             }
         }
     }
-
-    fun scheduleRoutine(
-        context: android.content.Context,
-        routine: Routine,
-        dateEpochDay: Long,
-        timeStr: String,
-        remindBeforeMinutes: Int = 1,
-        remindAtTime: Boolean = true,
-        vibrationPattern: String = "NOTHING_PULSE"
-    ) {
-        viewModelScope.launch {
-            val category = repository.categories.value.firstOrNull { it.id == routine.categoryId }
-            val item = com.example.routineforge.data.ScheduledRoutine(
-                id = UUID.randomUUID().toString(),
-                routineId = routine.id,
-                routineTitle = routine.title,
-                categoryName = category?.name ?: "General",
-                categoryEmoji = category?.emoji ?: "🎯",
-                categoryColorHex = routine.colorHex,
-                dateEpochDay = dateEpochDay,
-                timeOfDay = timeStr.trim().ifBlank { "09:00" },
-                durationMinutes = (routine.totalDurationSeconds / 60).coerceAtLeast(1),
-                remindBeforeMinutes = remindBeforeMinutes,
-                remindAtTime = remindAtTime,
-                vibrationPattern = vibrationPattern,
-                isCompleted = false
-            )
-            repository.scheduleRoutine(item)
-            com.example.routineforge.service.CalendarAlarmScheduler.scheduleAlarmsForTask(context, item)
-        }
-    }
-
-    fun clearAllData() {
-        viewModelScope.launch {
-            repository.clearAllData()
-        }
-    }
 }
-
