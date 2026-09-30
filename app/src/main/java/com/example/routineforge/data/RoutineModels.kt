@@ -1,6 +1,7 @@
 package com.example.routineforge.data
 
 import androidx.compose.runtime.Immutable
+import com.example.routineforge.util.NoteSuggestEngine
 import com.example.routineforge.util.TimeFormatters
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -118,7 +119,12 @@ data class Note(
         get() = text.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.take(60) ?: "Untitled"
 
     val preview: String
-        get() = text.lineSequence().filter { it.isNotBlank() }.drop(1).joinToString(" ").take(140)
+        get() = text.lineSequence().filter { it.isNotBlank() }.drop(1)
+            .joinToString(" ") { NoteSuggestEngine.prettyLine(it.trim()) }.take(140)
+
+    /** (done, total) checklist items, or null when the note has no checklist. */
+    val checklist: Pair<Int, Int>?
+        get() = NoteSuggestEngine.checkItems(text).takeIf { it.isNotEmpty() }?.let { items -> items.count { it.done } to items.size }
 }
 
 @Immutable

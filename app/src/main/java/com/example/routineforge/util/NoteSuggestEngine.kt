@@ -25,6 +25,72 @@ object NoteSuggestEngine {
 
     private val WORD = Regex("#?[\\p{L}\\p{N}']+")
     private val LIST_PREFIX = Regex("^(\\s*)(- \\[[ xX]] |• |- |\\* |(\\d+)\\. )")
+    private val CHECK_ITEM = Regex("^(\\s*)- \\[([ xX])] ")
+
+    enum class LineStyle { CHECK, BULLET, NUMBER }
+
+    /** A checklist line: [boxAt] is where its "- [ ] " marker starts; [done] when ticked. */
+    data class CheckItem(val lineStart: Int, val boxAt: Int, val markerLength: Int, val done: Boolean)
+
+    fun checkItems(text: String): List<CheckItem> {
+        val out = mutableListOf<CheckItem>()
+        var start = 0
+        while (start <= text.length) {
+            val end = text.indexOf('\n', start).let { if (it < 0) text.length else it }
+            CHECK_ITEM.find(text.substring(start, end))?.let { m ->
+                val indent = m.groupValues[1].length
+                out += CheckItem(start, start + indent, m.value.length - indent, m.groupValues[2] != " ")
+            }
+            start = end + 1
+        }
+        return out
+    }
+
+    /** Ticks or unticks the checklist item on the line starting at [lineStart]; the length never changes. */
+    fun toggleCheck(text: String, lineStart: Int): String {
+        val item = checkItems(text).firstOrNull { it.lineStart == lineStart } ?: return text
+        val i = item.boxAt + 3 // past "- ["
+        return text.substring(0, i) + (if (item.done) ' ' else 'x') + text.substring(i + 1)
+    }
+
+    /** Shows "- [ ] milk" as "☐ milk" in previews. */
+    fun prettyLine(line: String): String = CHECK_ITEM.find(line)?.let { m ->
+        m.groupValues[1] + (if (m.groupValues[2] == " ") "☐ " else "☑ ") + line.substring(m.value.length)
+    } ?: line
+
+    /**
+     * Applies [style] to the cursor's line: adds it, swaps another list marker for it,
+     * or removes it when the line already has it. Returns the new text and cursor.
+     */
+    fun toggleLineStyle(text: String, cursor: Int, style: LineStyle): Pair<String, Int> {
+        val c = cursor.coerceIn(0, text.length)
+        val lineStart = text.lastIndexOf('\n', c - 1) + 1
+        val lineEnd = text.indexOf('\n', c).let { if (it < 0) text.length else it }
+        val line = text.substring(lineStart, lineEnd)
+        val m = LIST_PREFIX.find(line)
+        val indent = m?.groupValues?.get(1) ?: line.takeWhile { it == ' ' || it == '\t' }
+        val old = m?.groupValues?.get(2).orEmpty()
+        val same = when (style) {
+            LineStyle.CHECK -> old.startsWith("- [")
+            LineStyle.BULLET -> old == "• " || old == "- " || old == "* "
+            LineStyle.NUMBER -> m?.groupValues?.get(3)?.isNotEmpty() == true
+        }
+        val marker = when {
+            same -> ""
+            style == LineStyle.CHECK -> "- [ ] "
+            style == LineStyle.BULLET -> "• "
+            else -> {
+                val prev = if (lineStart > 0) {
+                    LIST_PREFIX.find(text.substring(text.lastIndexOf('\n', lineStart - 2) + 1, lineStart - 1))
+                } else null
+                "${(prev?.groupValues?.get(3)?.toIntOrNull() ?: 0) + 1}. "
+            }
+        }
+        val from = lineStart + indent.length
+        val to = from + old.length
+        val newCursor = if (c >= to) c + marker.length - old.length else from + marker.length
+        return (text.substring(0, from) + marker + text.substring(to)) to newCursor
+    }
 
     private val COMMON_WORDS = listOf(
         "about", "action", "after", "again", "agenda", "already", "also", "always", "another", "answer",
@@ -85,7 +151,6 @@ object NoteSuggestEngine {
         text: String,
         cursor: Int,
         model: Model,
-        now: LocalDateTime = LocalDateTime.now(),
         max: Int = 3
     ): List<Suggestion> {
         val c = cursor.coerceIn(0, text.length)
@@ -112,14 +177,8 @@ object NoteSuggestEngine {
         if (token.isNotEmpty()) return emptyList()
 
         val line = before.substring(before.lastIndexOf('\n') + 1)
-        if (line.isBlank()) {
-            val time = now.format(DateTimeFormatter.ofPattern("HH:mm"))
-            return listOf(
-                Suggestion("☐ Checklist", "- [ ] ", c),
-                Suggestion("• Bullet", "• ", c),
-                Suggestion("🕒 $time", "$time — ", c)
-            )
-        }
+        // Checklist / bullet / time live in the editor toolbar now.
+        if (line.isBlank()) return emptyList()
 
         val prev = WORD.findAll(line).lastOrNull()?.value?.lowercase(Locale.ROOT) ?: return emptyList()
         return rank(model.bigrams[prev].orEmpty(), local.bigrams[prev].orEmpty()) { true }

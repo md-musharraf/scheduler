@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
@@ -67,6 +66,25 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.CheckBox
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextLayoutResult
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import com.example.routineforge.data.Note
 import com.example.routineforge.util.NoteSuggestEngine
 
@@ -178,12 +196,22 @@ private fun NoteCard(note: Note, onClick: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = if (System.currentTimeMillis() - note.updatedAt < DateUtils.MINUTE_IN_MILLIS) "Just now"
-                else DateUtils.getRelativeTimeSpanString(note.updatedAt).toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (System.currentTimeMillis() - note.updatedAt < DateUtils.MINUTE_IN_MILLIS) "Just now"
+                    else DateUtils.getRelativeTimeSpanString(note.updatedAt).toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                note.checklist?.let { (done, total) ->
+                    Text(
+                        "☑ $done/$total done",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (done == total) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
@@ -230,9 +258,15 @@ fun NoteEditorScreen(
         else emptyList()
     }
     val templates = remember { NoteSuggestEngine.templates() }
-    val wordCount = remember(value.text) { value.text.split(Regex("\\s+")).count { it.isNotBlank() } }
+    val wordCount = remember(value.text) { value.text.split(Regex("\\s+")).count { w -> w.any { it.isLetterOrDigit() } } }
+    val boxColor = MaterialTheme.colorScheme.primary
+    val doneColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val checklist = remember(value.text, boxColor, doneColor) { ChecklistText(value.text, boxColor, doneColor) }
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val hitSlop = with(LocalDensity.current) { 12.dp.toPx() }
 
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    // Opening an existing note shouldn't pop the keyboard over it; new notes start typing right away.
+    LaunchedEffect(Unit) { if (editor.initialText.isEmpty()) focus.requestFocus() }
 
     fun setValue(next: TextFieldValue) {
         value = next
@@ -278,37 +312,73 @@ fun NoteEditorScreen(
                 .consumeWindowInsets(padding)
                 .imePadding()
         ) {
-            BasicTextField(
-                value = value,
-                onValueChange = { new ->
-                    val continued = if (new.selection.collapsed) {
-                        NoteSuggestEngine.continueList(value.text, new.text, new.selection.start)
-                    } else null
-                    setValue(continued?.let { (t, c) -> TextFieldValue(t, TextRange(c)) } ?: new)
-                },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                decorationBox = { inner ->
-                    Box {
-                        if (value.text.isEmpty()) {
-                            Text(
-                                "Start typing…",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        inner()
-                    }
-                },
-                modifier = Modifier
+            Column(
+                Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .focusRequester(focus)
-            )
+                    .verticalScroll(rememberScrollState())
+            ) {
+                BasicTextField(
+                    value = value,
+                    onValueChange = { new ->
+                        val continued = if (new.selection.collapsed) {
+                            NoteSuggestEngine.continueList(value.text, new.text, new.selection.start)
+                        } else null
+                        setValue(continued?.let { (t, c) -> TextFieldValue(t, TextRange(c)) } ?: new)
+                    },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    visualTransformation = checklist.asVisualTransformation(),
+                    onTextLayout = { layout = it },
+                    decorationBox = { inner ->
+                        Box {
+                            if (value.text.isEmpty()) {
+                                Text(
+                                    "Start typing…",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 320.dp)
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .focusRequester(focus)
+                        // Taps on a checkbox tick it instead of moving the cursor there.
+                        .pointerInput(checklist) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(pass = PointerEventPass.Initial)
+                                val l = layout ?: return@awaitEachGesture
+                                val hit = checklist.boxes.firstOrNull { (at, _) ->
+                                    at < l.layoutInput.text.length &&
+                                        l.getBoundingBox(at).inflate(hitSlop).contains(down.position)
+                                } ?: return@awaitEachGesture
+                                down.consume()
+                                val up = waitForUpOrCancellation(PointerEventPass.Initial) ?: return@awaitEachGesture
+                                up.consume()
+                                setValue(value.copy(text = NoteSuggestEngine.toggleCheck(value.text, hit.second)))
+                            }
+                        }
+                )
+            }
 
-            // Suggestion strip, sits right above the keyboard.
+            // Formatting toolbar + suggestions, always right above the keyboard.
+            fun style(s: NoteSuggestEngine.LineStyle) {
+                val (t, c) = NoteSuggestEngine.toggleLineStyle(value.text, value.selection.start, s)
+                setValue(TextFieldValue(t, TextRange(c)))
+                focus.requestFocus()
+            }
+            fun insert(stamp: String) {
+                val at = value.selection.start
+                val gap = if (at > 0 && !value.text[at - 1].isWhitespace()) " " else ""
+                val (t, c) = NoteSuggestEngine.apply(value.text, at, NoteSuggestEngine.Suggestion(stamp, "$gap$stamp ", at))
+                setValue(TextFieldValue(t, TextRange(c)))
+                focus.requestFocus()
+            }
             val chips: List<Pair<String, () -> Unit>> = if (value.text.isEmpty()) {
                 templates.map { t -> t.name to { setValue(TextFieldValue(t.body, TextRange(t.body.length))) } }
             } else {
@@ -319,26 +389,37 @@ fun NoteEditorScreen(
                     }
                 }
             }
-            if (chips.isNotEmpty()) {
-                Surface(color = MaterialTheme.colorScheme.surface) {
-                    Column {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Filled.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
+            Surface(color = MaterialTheme.colorScheme.surface) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { style(NoteSuggestEngine.LineStyle.CHECK) }) {
+                            Icon(Icons.Outlined.CheckBox, contentDescription = "Checklist")
+                        }
+                        IconButton(onClick = { style(NoteSuggestEngine.LineStyle.BULLET) }) {
+                            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = "Bullet list")
+                        }
+                        IconButton(onClick = { style(NoteSuggestEngine.LineStyle.NUMBER) }) {
+                            Icon(Icons.Filled.FormatListNumbered, contentDescription = "Numbered list")
+                        }
+                        IconButton(onClick = { insert(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))) }) {
+                            Icon(Icons.Outlined.Schedule, contentDescription = "Insert time")
+                        }
+                        IconButton(onClick = {
+                            insert(LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault())))
+                        }) {
+                            Icon(Icons.Outlined.CalendarToday, contentDescription = "Insert date")
+                        }
+                        if (chips.isNotEmpty()) {
+                            VerticalDivider(Modifier.height(24.dp).padding(horizontal = 6.dp), color = MaterialTheme.colorScheme.outline)
                             chips.forEach { (label, onClick) ->
-                                SuggestionChip(onClick = onClick, label = { Text(label) })
+                                SuggestionChip(onClick = onClick, label = { Text(label) }, modifier = Modifier.padding(end = 8.dp))
                             }
                         }
                     }

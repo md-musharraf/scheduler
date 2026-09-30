@@ -91,6 +91,18 @@ import com.example.routineforge.theme.TabularTimerDigits
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.clipPath
+import kotlin.math.sqrt
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -191,7 +203,7 @@ fun SpecialTimerScreen(
                     SpecialTimerDial(
                         uiState = uiState,
                         label = settings.label.ifBlank { uiState.selectedCategory.name },
-                        modifier = Modifier.size(290.dp)
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
@@ -630,140 +642,168 @@ fun SpecialTimerDial(
     label: String,
     modifier: Modifier = Modifier
 ) {
-    val trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-    val sweepColor = if (uiState.status == SpecialTimerStatus.FINISHED) Color(0xFF4CAF50) else NothingRed
-    val dotColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
-    val categoryColor = try {
-        Color(uiState.selectedCategory.colorHex)
-    } catch (e: Exception) {
-        NothingRed
-    }
+    val finished = uiState.status == SpecialTimerStatus.FINISHED
+    val sandColor = if (finished) Color(0xFF4CAF50) else NothingRed
+    val categoryColor = Color(uiState.selectedCategory.colorHex)
 
-    // Direct 60fps linear sweep progress without stuttering tween conflicts
-    val dialProgress = uiState.progress.coerceIn(0f, 1f)
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val radius = (size.minDimension / 2f) - 18.dp.toPx()
-            val strokeWidth = 5.dp.toPx()
-
-            // 1. Ambient perimeter tick dots (60 tick marks)
-            val tickCount = 60
-            for (i in 0 until tickCount) {
-                val angleRad = Math.toRadians((i * 6.0) - 90.0)
-                val dotRadius = if (i % 5 == 0) 2.2.dp.toPx() else 1.2.dp.toPx()
-                val dist = radius + 10.dp.toPx()
-                val x = center.x + (dist * cos(angleRad)).toFloat()
-                val y = center.y + (dist * sin(angleRad)).toFloat()
-                drawCircle(
-                    color = dotColor,
-                    radius = dotRadius,
-                    center = Offset(x, y)
-                )
-            }
-
-            // 2. Background Track
-            drawCircle(
-                color = trackColor,
-                radius = radius,
-                center = center,
-                style = Stroke(width = strokeWidth)
-            )
-
-            // 3. Progress Arc (Remaining time) - ultra smooth continuous sweep
-            if (dialProgress > 0f) {
-                drawArc(
-                    color = sweepColor,
-                    startAngle = -90f,
-                    sweepAngle = 360f * dialProgress,
-                    useCenter = false,
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                )
-
-                // Glowing Leading Bead Indicator
-                val beadAngleRad = Math.toRadians((-90.0 + 360.0 * dialProgress))
-                val beadX = center.x + (radius * cos(beadAngleRad)).toFloat()
-                val beadY = center.y + (radius * sin(beadAngleRad)).toFloat()
-                drawCircle(
-                    color = Color.White,
-                    radius = 4.5.dp.toPx(),
-                    center = Offset(beadX, beadY)
-                )
-            }
-        }
-
-        // Center Content
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = categoryColor.copy(alpha = 0.12f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, categoryColor.copy(alpha = 0.35f))
         ) {
-            // Category Badge
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = categoryColor.copy(alpha = 0.12f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, categoryColor.copy(alpha = 0.35f))
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(categoryColor)
+                Box(Modifier.size(6.dp).clip(CircleShape).background(categoryColor))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        letterSpacing = 0.5.sp,
+                        color = categoryColor
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = label.uppercase(),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            letterSpacing = 0.5.sp,
-                            color = categoryColor
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Rock-solid fixed-width Tabular Digit Slots (Zero horizontal jitter)
-            val totalSec = uiState.remainingMillis / 1000
-            val h = (totalSec / 3600).toInt()
-            val m = ((totalSec % 3600) / 60).toInt()
-            val s = (totalSec % 60).toInt()
-            val ms = ((uiState.remainingMillis % 1000) / 10).toInt()
-
-            TabularTimerDigits(
-                hours = h,
-                minutes = m,
-                seconds = s,
-                millis = ms
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // State label
-            Text(
-                text = when (uiState.status) {
-                    SpecialTimerStatus.RUNNING -> "Running"
-                    SpecialTimerStatus.PAUSED -> "Paused"
-                    SpecialTimerStatus.FINISHED -> "Time's up"
-                    SpecialTimerStatus.IDLE -> "Ready"
-                },
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 10.sp,
-                    color = if (uiState.status == SpecialTimerStatus.FINISHED) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Hourglass(
+            remaining = uiState.progress,
+            flowing = uiState.status == SpecialTimerStatus.RUNNING,
+            sandColor = sandColor,
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .heightIn(max = 300.dp)
+                .aspectRatio(0.66f)
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // Fixed-width digit slots so the numbers never jitter while the millis tick.
+        val totalSec = uiState.remainingMillis / 1000
+        TabularTimerDigits(
+            hours = (totalSec / 3600).toInt(),
+            minutes = ((totalSec % 3600) / 60).toInt(),
+            seconds = (totalSec % 60).toInt(),
+            millis = ((uiState.remainingMillis % 1000) / 10).toInt()
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        Text(
+            text = when (uiState.status) {
+                SpecialTimerStatus.RUNNING -> "Running"
+                SpecialTimerStatus.PAUSED -> "Paused"
+                SpecialTimerStatus.FINISHED -> "Time's up"
+                SpecialTimerStatus.IDLE -> "Ready"
+            },
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp,
+                color = if (finished) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
+    }
+}
+
+/**
+ * Framed hourglass: [remaining] (1 → 0) of the sand sits in the top bulb, the rest piles up below.
+ * Both bulbs narrow like cones, so sand height follows sqrt of the amount to look physically right.
+ */
+@Composable
+private fun Hourglass(remaining: Float, flowing: Boolean, sandColor: Color, modifier: Modifier = Modifier) {
+    val frameColor = MaterialTheme.colorScheme.onSurface
+    val glassColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+    val flow = rememberInfiniteTransition(label = "sand")
+    val phase by flow.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(400, easing = LinearEasing)),
+        label = "stream"
+    )
+
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+        val plate = 10.dp.toPx()
+
+        // Frame: two plates and two posts.
+        drawRoundRect(frameColor, Offset(0f, 0f), Size(w, plate), CornerRadius(plate / 2))
+        drawRoundRect(frameColor, Offset(0f, h - plate), Size(w, plate), CornerRadius(plate / 2))
+        listOf(w * 0.07f, w * 0.93f).forEach { x ->
+            drawLine(frameColor.copy(alpha = 0.55f), Offset(x, plate), Offset(x, h - plate), 3.dp.toPx(), StrokeCap.Round)
+        }
+
+        val top = plate + 3.dp.toPx()
+        val bottom = h - plate - 3.dp.toPx()
+        val mid = (top + bottom) / 2f
+        val half = mid - top
+        val a = w * 0.33f
+        val neck = 2.5.dp.toPx()
+        fun bulb(edge: Float, dir: Float) = Path().apply {
+            moveTo(cx - a, edge)
+            lineTo(cx + a, edge)
+            cubicTo(cx + a, edge + dir * half * 0.62f, cx + neck, mid - dir * half * 0.28f, cx + neck, mid)
+            lineTo(cx - neck, mid)
+            cubicTo(cx - neck, mid - dir * half * 0.28f, cx - a, edge + dir * half * 0.62f, cx - a, edge)
+            close()
+        }
+        val upper = bulb(top, 1f)
+        val lower = bulb(bottom, -1f)
+
+        val f = remaining.coerceIn(0f, 1f)
+        val cap = 0.86f // a full top bulb is filled to 86% of its height
+        if (f > 0f) {
+            clipPath(upper) {
+                val level = mid - half * cap * sqrt(f)
+                drawRect(sandColor, Offset(0f, level), Size(w, mid - level))
+            }
+        }
+        // Same volume as what left the top: cone volume ~ height^2, measured from the wide end here.
+        val pile = half * (1f - sqrt(1f - (1f - f) * cap * cap))
+        val mound = 10.dp.toPx() * minOf(1f, (1f - f) * 8f)
+        if (f < 1f) {
+            clipPath(lower) {
+                val level = bottom - pile
+                drawPath(
+                    Path().apply {
+                        moveTo(0f, bottom)
+                        lineTo(0f, level)
+                        lineTo(cx - a, level)
+                        quadraticTo(cx, level - mound * 2f, cx + a, level)
+                        lineTo(w, level)
+                        lineTo(w, bottom)
+                        close()
+                    },
+                    sandColor
+                )
+            }
+        }
+        if (flowing && f > 0f) {
+            val dash = 5.dp.toPx()
+            drawLine(
+                sandColor,
+                Offset(cx, mid),
+                Offset(cx, bottom - pile - mound),
+                2.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.6f), -phase * dash * 1.6f)
             )
         }
+
+        // Glass outline and a soft highlight on each bulb.
+        drawPath(upper, glassColor, style = Stroke(2.dp.toPx()))
+        drawPath(lower, glassColor, style = Stroke(2.dp.toPx()))
+        val shine = Color.White.copy(alpha = 0.10f)
+        drawLine(shine, Offset(cx - a * 0.72f, top + half * 0.12f), Offset(cx - a * 0.42f, top + half * 0.55f), 4.dp.toPx(), StrokeCap.Round)
+        drawLine(shine, Offset(cx - a * 0.72f, bottom - half * 0.12f), Offset(cx - a * 0.42f, bottom - half * 0.55f), 4.dp.toPx(), StrokeCap.Round)
     }
 }
 

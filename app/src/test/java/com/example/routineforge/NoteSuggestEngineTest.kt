@@ -59,4 +59,27 @@ class NoteSuggestEngineTest {
 
         assertNull(NoteSuggestEngine.continueList("plain", "plain\n", 6))
     }
+
+    @Test
+    fun toolbarTogglesLineStyleFromAnywhereOnTheLine() {
+        val check = NoteSuggestEngine.LineStyle.CHECK
+        // Mid-line: marker goes to the line start, cursor keeps its place in the words.
+        assertEquals("a\n- [ ] milk" to 10, NoteSuggestEngine.toggleLineStyle("a\nmilk", 4, check))
+        // Same style again removes it; another style swaps it.
+        assertEquals("milk" to 2, NoteSuggestEngine.toggleLineStyle("- [ ] milk", 8, check))
+        assertEquals("• milk" to 4, NoteSuggestEngine.toggleLineStyle("- [x] milk", 8, NoteSuggestEngine.LineStyle.BULLET))
+        // Numbering follows the previous line.
+        assertEquals("1. a\n2. b" to 9, NoteSuggestEngine.toggleLineStyle("1. a\nb", 6, NoteSuggestEngine.LineStyle.NUMBER))
+    }
+
+    @Test
+    fun checkboxesTickAndCount() {
+        val text = "Shop\n- [ ] milk\n  - [x] eggs"
+        val items = NoteSuggestEngine.checkItems(text)
+        assertEquals(listOf(false, true), items.map { it.done })
+        val ticked = NoteSuggestEngine.toggleCheck(text, items[0].lineStart)
+        assertEquals("Shop\n- [x] milk\n  - [x] eggs", ticked)
+        assertEquals(text, NoteSuggestEngine.toggleCheck(ticked, items[0].lineStart))
+        assertEquals("☑ eggs", NoteSuggestEngine.prettyLine("- [x] eggs"))
+    }
 }
