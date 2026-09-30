@@ -12,6 +12,7 @@ import com.example.routineforge.service.RoutineTimerAction
 import com.example.routineforge.service.RoutineTimerController
 import com.example.routineforge.service.RoutineTimerService
 import com.example.routineforge.util.AlertHelper
+import com.example.routineforge.util.FocusTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,6 +113,17 @@ class RoutinePlayerViewModel(
 
     private var timerJob: Job? = null
 
+    // Focus seconds of the current work step not yet written to the dashboard log.
+    private var focusTitle: String? = null
+    private var focusSeconds = 0
+
+    private fun flushFocus() {
+        val title = focusTitle ?: return
+        FocusTracker.record(getApplication(), title, focusSeconds)
+        focusTitle = null
+        focusSeconds = 0
+    }
+
     init {
         loadRoutine()
         viewModelScope.launch {
@@ -181,6 +193,7 @@ class RoutinePlayerViewModel(
     }
 
     fun pause() {
+        flushFocus()
         val newState = _uiState.value.copy(isPlaying = false)
         _uiState.value = newState
         timerJob?.cancel()
@@ -201,6 +214,11 @@ class RoutinePlayerViewModel(
     private fun tick() {
         val state = _uiState.value
         val routine = state.routine ?: return
+        state.currentStep?.takeIf { it.stepType == StepType.WORK }?.let { step ->
+            if (focusTitle != step.title) flushFocus()
+            focusTitle = step.title
+            focusSeconds++
+        }
 
         val newStepRemaining = state.currentStepRemainingSeconds - 1
         val newCatRemaining = (state.categoryRemainingSeconds - 1).coerceAtLeast(0)
@@ -376,6 +394,7 @@ class RoutinePlayerViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        flushFocus()
         timerJob?.cancel()
         alertHelper.release()
         RoutineTimerService.stop(getApplication())

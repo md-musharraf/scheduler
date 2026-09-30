@@ -1,9 +1,12 @@
 package com.example.routineforge.data
 
 import android.content.Context
+import com.example.routineforge.util.TimeFormatters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 class RoutineRepository(private val storage: RoutineStorage) {
 
@@ -29,6 +32,56 @@ class RoutineRepository(private val storage: RoutineStorage) {
 
     private val _timerSettings = MutableStateFlow(storage.getTimerSettings())
     val timerSettings: StateFlow<TimerSettings> = _timerSettings.asStateFlow()
+
+    private val _goals = MutableStateFlow(storage.getGoals())
+    val goals: StateFlow<List<FocusGoal>> = _goals.asStateFlow()
+
+    private val _focusLog = MutableStateFlow(storage.getFocusLog())
+    val focusLog: StateFlow<FocusLog> = _focusLog.asStateFlow()
+
+    fun saveGoal(goal: FocusGoal) = synchronized(lock) {
+        val clean = goal.sanitized()
+        val current = _goals.value
+        val updated = if (current.any { it.id == clean.id }) current.map { if (it.id == clean.id) clean else it } else current + clean
+        storage.saveGoals(updated)
+        _goals.value = updated
+    }
+
+    fun deleteGoal(id: String) = synchronized(lock) {
+        val updated = _goals.value.filter { it.id != id }
+        storage.saveGoals(updated)
+        _goals.value = updated
+    }
+
+    // ponytail: rewrites the whole log JSON per flush (pause / step change / finish), not per second
+    fun addFocus(subject: String, seconds: Int, end: LocalDateTime = LocalDateTime.now()) = synchronized(lock) {
+        val updated = FocusStats.add(_focusLog.value, subject, end, seconds)
+        if (updated === _focusLog.value) return@synchronized
+        storage.saveFocusLog(updated)
+        _focusLog.value = updated
+    }
+
+    /** One step per unfinished goal, sized to what's left today; replaces the previous plan routine. */
+    fun buildTodayPlan(): Routine? = synchronized(lock) {
+        val today = FocusStats.days(_focusLog.value)[LocalDate.now().toEpochDay()].orEmpty()
+        val steps = _goals.value.mapNotNull { g ->
+            val left = g.targetSeconds - (today[g.title] ?: 0)
+            if (left >= 60) RoutineStep(title = g.title, durationSeconds = left, instruction = "Daily goal · ${TimeFormatters.formatDurationMinutes(g.minutes)}") else null
+        }
+        if (steps.isEmpty()) return@synchronized null
+        _routines.value.filter { it.id.startsWith(PLAN_ID_PREFIX) }.forEach { storage.deleteRoutine(it.id) }
+        val plan = Routine(
+            id = PLAN_ID_PREFIX + System.currentTimeMillis(),
+            title = "Today's plan",
+            description = "Your daily goals, one countdown per subject",
+            categoryId = "cat_study",
+            colorHex = 0xFFD71921,
+            steps = steps
+        )
+        storage.saveRoutine(plan)
+        _routines.value = storage.getRoutines()
+        plan
+    }
 
     // ponytail: rewrites the whole notes JSON per save; move to Room if notes grow into the thousands
     fun saveNote(note: Note) = synchronized(lock) {
@@ -155,10 +208,14 @@ class RoutineRepository(private val storage: RoutineStorage) {
         _sessions.value = emptyList()
         _scheduledRoutines.value = emptyList()
         _notes.value = emptyList()
+        _goals.value = emptyList()
+        _focusLog.value = emptyMap()
     }
 
 
     companion object {
+        private const val PLAN_ID_PREFIX = "routine_today_plan_"
+
         @Volatile
         private var INSTANCE: RoutineRepository? = null
 

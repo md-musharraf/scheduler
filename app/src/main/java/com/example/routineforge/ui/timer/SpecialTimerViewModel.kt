@@ -10,6 +10,7 @@ import com.example.routineforge.data.TimerSettings
 import com.example.routineforge.service.ActiveTimerType
 import com.example.routineforge.service.TimerSessionManager
 import com.example.routineforge.util.AlertHelper
+import com.example.routineforge.util.FocusTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,9 +76,24 @@ class SpecialTimerViewModel(
 
     private var timerJob: Job? = null
     private var targetEndTime: Long = 0L
+    /** Remaining time at the last point focus was logged; the gap since then is unlogged focus. */
+    private var unloggedFromMillis: Long = 0L
 
     private val sessionTitle: String
         get() = settings.value.label.ifBlank { _uiState.value.selectedCategory.name }.uppercase()
+
+    private fun logFocus(remainingNow: Long) {
+        val sec = ((unloggedFromMillis - remainingNow) / 1000).toInt()
+        if (sec <= 0) return
+        unloggedFromMillis -= sec * 1000L
+        FocusTracker.record(getApplication(), settings.value.label.ifBlank { _uiState.value.selectedCategory.name }, sec)
+    }
+
+    private fun liveRemaining(): Long = when (_uiState.value.status) {
+        SpecialTimerStatus.RUNNING -> (targetEndTime - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        SpecialTimerStatus.PAUSED -> _uiState.value.remainingMillis
+        else -> unloggedFromMillis
+    }
 
     init {
         val last = settings.value.lastDurationSeconds
@@ -117,6 +133,7 @@ class SpecialTimerViewModel(
             // If already running or paused, add time dynamically
             val additionalMs = additionalMinutes * 60 * 1000L
             targetEndTime += additionalMs
+            unloggedFromMillis += additionalMs
             _uiState.update {
                 val newTotal = it.totalDurationMillis + additionalMs
                 val newRemaining = it.remainingMillis + additionalMs
@@ -136,6 +153,7 @@ class SpecialTimerViewModel(
             updateSettings { it.copy(lastDurationSeconds = (_uiState.value.totalDurationMillis / 1000).toInt()) }
         }
         targetEndTime = SystemClock.elapsedRealtime() + currentRemaining
+        unloggedFromMillis = currentRemaining
         _uiState.update { it.copy(status = SpecialTimerStatus.RUNNING) }
 
         TimerSessionManager.onTogglePlayPause = {
@@ -159,11 +177,14 @@ class SpecialTimerViewModel(
                 )
 
                 if (left <= 0L && settings.value.autoRepeat) {
+                    logFocus(0L)
+                    unloggedFromMillis = _uiState.value.totalDurationMillis
                     alertHelper.playRoutineComplete(settings.value.soundEnabled, settings.value.vibrationEnabled)
                     targetEndTime = SystemClock.elapsedRealtime() + _uiState.value.totalDurationMillis
                     continue
                 }
                 if (left <= 0L) {
+                    logFocus(0L)
                     _uiState.update { it.copy(status = SpecialTimerStatus.FINISHED, remainingMillis = 0L) }
                     TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
                     // Trigger 1-second authoritative alert vibration & tone
@@ -180,6 +201,7 @@ class SpecialTimerViewModel(
         timerJob?.cancel()
         val now = SystemClock.elapsedRealtime()
         val left = (targetEndTime - now).coerceAtLeast(0L)
+        logFocus(left)
         _uiState.update {
             it.copy(
                 status = SpecialTimerStatus.PAUSED,
@@ -201,6 +223,7 @@ class SpecialTimerViewModel(
     }
 
     fun reset() {
+        logFocus(liveRemaining())
         timerJob?.cancel()
         val initialMs = (_uiState.value.selectedHours * 3600L + _uiState.value.selectedMinutes * 60L + _uiState.value.selectedSeconds) * 1000L
         _uiState.update {
@@ -216,6 +239,7 @@ class SpecialTimerViewModel(
     /** Used by reminder notifications: replaces whatever is on the timer and starts it. */
     fun startWith(label: String, seconds: Int) {
         if (seconds <= 0) return
+        logFocus(liveRemaining())
         timerJob?.cancel()
         _uiState.update { it.copy(status = SpecialTimerStatus.IDLE) }
         updateSettings { it.copy(label = label.take(40)) }
@@ -230,6 +254,7 @@ class SpecialTimerViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        logFocus(liveRemaining())
         timerJob?.cancel()
         TimerSessionManager.clearSession(ActiveTimerType.SPECIAL_TIMER)
     }

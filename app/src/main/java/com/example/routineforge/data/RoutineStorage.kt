@@ -28,6 +28,8 @@ class RoutineStorage(context: Context) {
         private const val KEY_TIMER_VIBE = "timer_vibe"
         private const val KEY_TIMER_REPEAT = "timer_repeat"
         private const val KEY_TIMER_LAST_SEC = "timer_last_sec"
+        private const val KEY_GOALS = "focus_goals_json"
+        private const val KEY_FOCUS_LOG = "focus_log_json"
 
         val DEFAULT_CATEGORIES = listOf(
             RoutineCategory("cat_comm", "Communication Skills", "🎙️", 0xFF8B5CF6),
@@ -157,6 +159,8 @@ class RoutineStorage(context: Context) {
             .putString(KEY_SESSIONS, "[]")
             .putString(KEY_SCHEDULED, "[]")
             .putString(KEY_NOTES, "[]")
+            .remove(KEY_GOALS)
+            .remove(KEY_FOCUS_LOG)
             .apply()
     }
 
@@ -521,6 +525,65 @@ class RoutineStorage(context: Context) {
             })
         }
         prefs.edit().putString(KEY_NOTES, arr.toString()).apply()
+    }
+
+    // Daily focus goals
+    @Synchronized
+    fun getGoals(): List<FocusGoal> {
+        val jsonStr = prefs.getString(KEY_GOALS, null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(jsonStr)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                FocusGoal(
+                    id = obj.getString("id"),
+                    title = obj.getString("title"),
+                    minutes = obj.optInt("minutes", 60),
+                    colorHex = obj.optLong("colorHex", FocusGoal.PALETTE[0])
+                ).sanitized()
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    @Synchronized
+    fun saveGoals(goals: List<FocusGoal>) {
+        val arr = JSONArray()
+        goals.forEach { g ->
+            val clean = g.sanitized()
+            arr.put(JSONObject().apply {
+                put("id", clean.id)
+                put("title", clean.title)
+                put("minutes", clean.minutes)
+                put("colorHex", clean.colorHex)
+            })
+        }
+        prefs.edit().putString(KEY_GOALS, arr.toString()).apply()
+    }
+
+    // Focus log: {"hourKey": {"Math": seconds}}
+    @Synchronized
+    fun getFocusLog(): FocusLog {
+        val jsonStr = prefs.getString(KEY_FOCUS_LOG, null) ?: return emptyMap()
+        return try {
+            val root = JSONObject(jsonStr)
+            root.keys().asSequence().associate { key ->
+                val hour = root.getJSONObject(key)
+                key.toLong() to hour.keys().asSequence().associateWith { hour.getInt(it).coerceAtLeast(0) }
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    @Synchronized
+    fun saveFocusLog(log: FocusLog) {
+        val root = JSONObject()
+        log.forEach { (key, subjects) ->
+            root.put(key.toString(), JSONObject().apply { subjects.forEach { (s, sec) -> put(s, sec) } })
+        }
+        prefs.edit().putString(KEY_FOCUS_LOG, root.toString()).apply()
     }
 
     // Timer customization

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -35,6 +36,7 @@ import com.example.routineforge.service.ActiveTimerType
 import com.example.routineforge.service.RoutineTimerService
 import com.example.routineforge.service.TimerSessionManager
 import com.example.routineforge.ui.components.FloatingMiniTimerBar
+import com.example.routineforge.ui.dashboard.DashboardScreen
 import com.example.routineforge.ui.editor.RoutineEditorScreen
 import com.example.routineforge.ui.editor.RoutineEditorViewModel
 import com.example.routineforge.ui.history.HistoryStatsScreen
@@ -66,7 +68,7 @@ fun MainNavigation(
     val application = context.applicationContext as Application
     val repository = remember { RoutineRepository.getInstance(context) }
     // CalendarNav is the Schedule tab (key kept so saved back stacks stay valid).
-    val backStack = rememberNavBackStack(CalendarNav)
+    val backStack = rememberNavBackStack(DashboardNav)
 
     // No per-entry ViewModel store here, so these are activity-scoped: the same instances the
     // screens below get, which lets a notification start the timer before the Timer tab exists.
@@ -74,14 +76,15 @@ fun MainNavigation(
     val scheduleViewModel: ScheduleViewModel = viewModel { ScheduleViewModel(application, repository) }
 
     val tabs = listOf(
+        Triple(DashboardNav, "Today", Icons.Filled.Insights),
         Triple(CalendarNav, "Schedule", Icons.Filled.Event),
         Triple(SpecialTimerNav, "Timer", Icons.Filled.Timer),
         Triple(NotesNav, "Notes", Icons.Filled.EditNote)
     )
     val selectTab: (NavKey) -> Unit = { tab ->
-        // Tabs sit directly on top of the Schedule root, so Back from any tab returns home.
+        // Tabs sit directly on top of the Today root, so Back from any tab returns home.
         while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
-        if (tab != CalendarNav) backStack.add(tab)
+        if (tab != backStack.first()) backStack.add(tab)
     }
 
     LaunchedEffect(launch) {
@@ -99,6 +102,7 @@ fun MainNavigation(
                 }
             }
             intent.getStringExtra(NothingTimerWidgetProvider.EXTRA_TARGET_NAV) == MainActivity.NAV_SCHEDULE -> selectTab(CalendarNav)
+            intent.getStringExtra(NothingTimerWidgetProvider.EXTRA_TARGET_NAV) == MainActivity.NAV_DASHBOARD -> selectTab(DashboardNav)
         }
         onLaunchHandled()
     }
@@ -140,6 +144,18 @@ fun MainNavigation(
                 backStack = backStack,
                 onBack = { backStack.removeLastOrNull() },
                 entryProvider = entryProvider {
+                    entry<DashboardNav> {
+                        DashboardScreen(
+                            repository = repository,
+                            onStartGoal = { goal, seconds ->
+                                timerViewModel.startWith(goal.title, seconds)
+                                selectTab(SpecialTimerNav)
+                            },
+                            onStartPlan = { repository.buildTodayPlan()?.let { backStack.add(RoutinePlayerNav(it.id)) } },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
                     entry<CalendarNav> {
                         ScheduleScreen(
                             viewModel = scheduleViewModel,

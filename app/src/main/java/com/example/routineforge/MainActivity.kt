@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
   companion object {
     const val NAV_SCHEDULE = "SCHEDULE"
+    const val NAV_DASHBOARD = "DASHBOARD"
     const val EXTRA_TIMER_SECONDS = "extra_timer_seconds"
     const val EXTRA_TIMER_LABEL = "extra_timer_label"
 
