@@ -86,6 +86,9 @@ interface SessionDao {
     @Query("SELECT * FROM focus_sessions WHERE subjectId = :subjectId AND status = 'COMPLETED' AND sessionType = 'FOCUS' ORDER BY endTime DESC LIMIT :limit")
     fun observeRecentForSubject(subjectId: Long, limit: Int): Flow<List<FocusSession>>
 
+    @Query("SELECT subjectId FROM focus_sessions WHERE sessionType = 'FOCUS' ORDER BY createdAt DESC LIMIT 1")
+    suspend fun lastFocusSubject(): Long?
+
     @Query("SELECT COUNT(*) FROM focus_sessions WHERE status = 'COMPLETED' AND sessionType = 'FOCUS' AND endTime >= :from")
     suspend fun countFocusSince(from: Long): Int
 

@@ -38,11 +38,15 @@ class SandSimTest {
         val sim = SandSim()
         sim.reset(0.3f) // stopped early with sand left on top
         var sawFlip = false
+        var movedWhileInverted = false
         repeat(2000) {
+            val before = sim.cells.copyOf()
             sim.update(1 / 60f, sim.total)
             sawFlip = sawFlip || sim.phase == SandSim.Phase.FLIP
+            if (sim.inverted && !before.contentEquals(sim.cells)) movedWhileInverted = true
         }
         assertTrue(sawFlip)
+        assertTrue(movedWhileInverted)
         assertEquals(sim.total, sim.topCount)
         assertEquals(sim.total, sim.grains())
     }

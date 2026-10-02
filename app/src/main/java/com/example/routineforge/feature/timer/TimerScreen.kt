@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -122,10 +124,9 @@ fun TimerScreen(vm: TimerViewModel, nav: AppNav) {
         return
     }
 
+    // Everything fits on one screen: the hourglass takes whatever height the rest leaves.
     Column(
-        Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.08f), Color.Transparent)))
-            .verticalScroll(rememberScrollState()),
+        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.08f), Color.Transparent))),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         val isFocus = ui.type == SessionType.FOCUS
@@ -147,20 +148,19 @@ fun TimerScreen(vm: TimerViewModel, nav: AppNav) {
             trailing = { IconButton(onClick = { nav.push(SettingsNav) }) { Icon(Icons.Filled.Settings, contentDescription = "Timer settings") } }
         )
         if (vm.showStopwatch) {
-            Spacer(Modifier.height(12.dp))
-            StopwatchPane(vm.stopwatch)
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 12.dp)) { StopwatchPane(vm.stopwatch) }
             return@Column
         }
 
         ModeToggle(isFocus, enabled = !ui.isActive, accent = accent) { focus ->
             vm.setMode(if (focus) SessionType.FOCUS else if (ui.type == SessionType.LONG_BREAK) SessionType.LONG_BREAK else SessionType.SHORT_BREAK)
         }
-        Box(Modifier.fillMaxWidth().height(340.dp)) {
+        Box(Modifier.fillMaxWidth().weight(1f)) {
             SandHourglass(
                 remaining = { ui.remainingFraction(System.currentTimeMillis()) },
                 running = ui.isRunning,
                 sand = look.sand,
-                modifier = Modifier.align(Alignment.Center).size(width = 230.dp, height = 330.dp)
+                modifier = Modifier.align(Alignment.Center).fillMaxHeight().aspectRatio(0.66f)
             )
             if (!ui.isActive) Box(Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)) {
                 Presets(presetsFor(ui.type), ui.profile.minutesFor(ui.type), accent) { vm.setDuration(ui.type, it) }
@@ -170,7 +170,7 @@ fun TimerScreen(vm: TimerViewModel, nav: AppNav) {
         val clock = TimeFormat.clock(ui.remainingMs)
         Text(
             clock,
-            style = TimerDigits.copy(fontSize = 58.sp),
+            style = TimerDigits.copy(fontSize = 52.sp, lineHeight = 56.sp),
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(enabled = !ui.isActive, onClickLabel = "Change duration") { editDuration = true }
@@ -178,13 +178,13 @@ fun TimerScreen(vm: TimerViewModel, nav: AppNav) {
                 .semantics { contentDescription = "$clock remaining" }
         )
         Text("/ ${TimeFormat.clock(ui.plannedMs)}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(10.dp))
         SessionCard(ui, look, accent, onPick = vm::selectSubject)
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(14.dp))
         if (!ui.isActive) {
             Button(
                 onClick = vm::toggle,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(60.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(56.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White)
             ) {
@@ -198,12 +198,12 @@ fun TimerScreen(vm: TimerViewModel, nav: AppNav) {
                 RoundAction(
                     if (ui.isRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     if (ui.isRunning) "Pause" else "Resume",
-                    size = 88, container = accent, content = Color.White, onClick = vm::toggle
+                    size = 76, container = accent, content = Color.White, onClick = vm::toggle
                 )
                 RoundAction(Icons.Filled.Stop, "Stop", onClick = { showStop = true })
             }
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(14.dp))
     }
 
     if (showStop) {
@@ -243,7 +243,7 @@ fun TimerScreen(vm: TimerViewModel, nav: AppNav) {
 
 @Composable
 private fun Header(title: String, subtitle: String, leading: @Composable () -> Unit, trailing: @Composable () -> Unit) {
-    Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp)) {
+    Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 2.dp)) {
         Box(Modifier.align(Alignment.CenterStart)) { leading() }
         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -257,7 +257,7 @@ private fun Header(title: String, subtitle: String, leading: @Composable () -> U
 @Composable
 private fun ModeToggle(focus: Boolean, enabled: Boolean, accent: Color, onSelect: (Boolean) -> Unit) {
     Row(
-        Modifier.padding(horizontal = 32.dp, vertical = 8.dp).fillMaxWidth().clip(CircleShape)
+        Modifier.padding(horizontal = 32.dp, vertical = 4.dp).fillMaxWidth().clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceVariant).padding(4.dp)
     ) {
         listOf(true to "Focus", false to "Break").forEach { (isFocus, label) ->
@@ -268,7 +268,7 @@ private fun ModeToggle(focus: Boolean, enabled: Boolean, accent: Color, onSelect
                 shape = CircleShape,
                 color = if (selected) accent else Color.Transparent,
                 contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f).height(48.dp)
+                modifier = Modifier.weight(1f).height(44.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (isFocus) Icons.Filled.HourglassTop else Icons.Filled.LocalCafe, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -283,7 +283,7 @@ private fun ModeToggle(focus: Boolean, enabled: Boolean, accent: Color, onSelect
 /** Quick lengths beside the hourglass while idle. */
 @Composable
 private fun Presets(options: List<Int>, selected: Int, accent: Color, onPick: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         options.forEach { m ->
             val on = m == selected
             Surface(
@@ -292,7 +292,7 @@ private fun Presets(options: List<Int>, selected: Int, accent: Color, onPick: (I
                 color = if (on) accent else MaterialTheme.colorScheme.surface,
                 contentColor = if (on) Color.White else MaterialTheme.colorScheme.onSurface,
                 shadowElevation = if (on) 4.dp else 1.dp,
-                modifier = Modifier.size(width = 64.dp, height = 76.dp).semantics { contentDescription = "$m minutes" }
+                modifier = Modifier.size(width = 58.dp, height = 64.dp).semantics { contentDescription = "$m minutes" }
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Text("$m", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -318,10 +318,10 @@ private fun SessionCard(ui: TimerUi, look: Look, accent: Color, onPick: (Long?) 
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 val s = ui.subject
-                if (focus && s != null) SubjectBadge(s.icon, s.color, size = 46.dp)
-                else Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                if (focus && s != null) SubjectBadge(s.icon, s.color, size = 42.dp)
+                else Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
                     Icon(if (focus) Icons.AutoMirrored.Filled.MenuBook else look.icon, contentDescription = null, tint = accent)
                 }
                 Spacer(Modifier.width(14.dp))
@@ -357,14 +357,14 @@ private fun SessionCard(ui: TimerUi, look: Look, accent: Color, onPick: (Long?) 
 
 @Composable
 private fun RoundAction(
-    icon: ImageVector, label: String, onClick: () -> Unit, size: Int = 60,
+    icon: ImageVector, label: String, onClick: () -> Unit, size: Int = 56,
     container: Color = MaterialTheme.colorScheme.surface, content: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(onClick = onClick, shape = CircleShape, color = container, contentColor = content, shadowElevation = 6.dp, modifier = Modifier.size(size.dp)) {
             Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = label, modifier = Modifier.size((size * 0.42f).dp)) }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(label, style = MaterialTheme.typography.labelLarge)
     }
 }
@@ -376,16 +376,15 @@ private fun CompletionScreen(done: TimerEvent.Finished, look: Look, onContinue: 
     Column(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(look.accent.copy(alpha = 0.10f), Color.Transparent)))
-            .verticalScroll(rememberScrollState())
             .statusBarsPadding()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(16.dp))
-        Box(Modifier.size(width = 230.dp, height = 300.dp)) {
+        Box(Modifier.weight(1f).aspectRatio(0.66f)) {
             SandHourglass(remaining = { 0f }, running = false, sand = look.sand, modifier = Modifier.fillMaxSize())
             Box(
-                Modifier.align(Alignment.Center).offset(x = 62.dp).size(60.dp).clip(CircleShape).background(look.accent),
+                Modifier.align(Alignment.Center).offset(y = 24.dp).size(60.dp).clip(CircleShape).background(look.accent),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp)) }
         }

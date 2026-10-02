@@ -41,6 +41,12 @@ class SandSim(val w: Int = 91, val h: Int = 153, seed: Int = 1) {
     /** 0..1 progress of the turn-over while [phase] is FLIP. */
     var flip = 0f
         private set
+    /**
+     * True in the second half of the turn-over, when the glass is upside down enough that gravity
+     * pulls the sand towards the neck (up, in grid terms) and it slides across the glass.
+     */
+    val inverted: Boolean get() = phase == Phase.FLIP && flip >= 0.5f
+
     /** Nothing moves and nothing is pending, so the caller can stop animating until the target changes. */
     var settled = false
         private set
@@ -65,6 +71,8 @@ class SandSim(val w: Int = 91, val h: Int = 153, seed: Int = 1) {
         else 1f - 0.4f * ((t - SHOULDER) / (1f - SHOULDER)).let { it * it }
         return NECK_HALF + (maxHalf - NECK_HALF) * shape
     }
+
+    fun isInside(x: Int, y: Int): Boolean = x in 0 until w && y in 0 until h && !wall[y * w + x]
 
     fun isFree(x: Int, y: Int): Boolean = x in 0 until w && y in 0 until h && !wall[y * w + x] && cells[y * w + x] == EMPTY
 
@@ -100,6 +108,11 @@ class SandSim(val w: Int = 91, val h: Int = 153, seed: Int = 1) {
     fun update(dt: Float, targetTop: Int) {
         if (phase == Phase.FLIP) {
             flip += dt / FLIP_SECONDS
+            if (inverted) {
+                stepBudget += dt * STEPS_PER_SECOND * 2
+                repeat(stepBudget.toInt().coerceAtMost(12)) { step(Int.MAX_VALUE, fast = true, dir = -1) }
+                stepBudget -= stepBudget.toInt()
+            }
             if (flip >= 1f) {
                 cells.reverse() // (x, y) → (w-1-x, h-1-y): the glass is symmetric, so this is the turn-over
                 topCount = (0 until (neckRow + 1) * w).count { cells[it] != EMPTY }
@@ -124,16 +137,20 @@ class SandSim(val w: Int = 91, val h: Int = 153, seed: Int = 1) {
         settled = moved == 0 && fallCount == 0 && phase == Phase.RUN
     }
 
-    /** One automaton pass, bottom row first so a grain moves at most one cell per pass. */
-    private fun step(gate: Int, fast: Boolean) {
-        for (y in h - 2 downTo 0) {
+    /**
+     * One automaton pass with gravity along [dir] rows (+1 down, -1 up), scanning from the side
+     * gravity pulls towards so a grain moves at most one cell per pass.
+     */
+    private fun step(gate: Int, fast: Boolean, dir: Int = 1) {
+        var y = if (dir > 0) h - 2 else 1
+        while (y in 0 until h) {
             val ltr = next() and 1 == 0
             for (i in 0 until w) {
                 val x = if (ltr) i else w - 1 - i
                 val idx = y * w + x
                 val g = cells[idx]
                 if (g == EMPTY) continue
-                if (y == neckRow) {
+                if (y == neckRow && dir > 0) {
                     // The only way from top to bottom, open while the top holds more than the target.
                     if (topCount <= gate || !isFree(x, y + 1)) continue
                     cells[idx] = EMPTY
@@ -142,27 +159,33 @@ class SandSim(val w: Int = 91, val h: Int = 153, seed: Int = 1) {
                     if (fast || fallCount == maxFalling) rollDown(x, y + 1, g) else launch(x, y + 1, g)
                     continue
                 }
-                val to = moveTarget(x, y)
+                val to = moveTarget(x, y, dir)
                 if (to >= 0) {
                     cells[to] = g
                     cells[idx] = EMPTY
                     moved++
                 }
             }
+            y -= dir
         }
     }
 
-    /** Cell the grain at (x, y) moves into, or -1 if it rests. Never called for the neck row. */
-    private fun moveTarget(x: Int, y: Int): Int {
-        val below = (y + 1) * w
-        if (isFree(x, y + 1)) return below + x
+    /**
+     * Cell the grain at (x, y) moves into with gravity along [dir], or -1 if it rests. Never called
+     * for the neck row going down; going up (mid-flip) the neck stays shut, so sand gathers against it.
+     */
+    private fun moveTarget(x: Int, y: Int, dir: Int = 1): Int {
+        val ny = y + dir
+        if (dir < 0 && y > neckRow && ny <= neckRow) return -1
+        val below = ny * w
+        if (isFree(x, ny)) return below + x
         val d = if (next() and 1 == 0) 1 else -1
-        if (isFree(x + d, y + 1)) return below + x + d
-        if (isFree(x - d, y + 1)) return below + x - d
+        if (isFree(x + d, ny)) return below + x + d
+        if (isFree(x - d, ny)) return below + x - d
         // An occasional two-cell slide lowers the angle of repose from 45° towards real sand.
         if (next() and 3 == 0) {
-            if (isFree(x + d, y) && isFree(x + 2 * d, y + 1)) return below + x + 2 * d
-            if (isFree(x - d, y) && isFree(x - 2 * d, y + 1)) return below + x - 2 * d
+            if (isFree(x + d, y) && isFree(x + 2 * d, ny)) return below + x + 2 * d
+            if (isFree(x - d, y) && isFree(x - 2 * d, ny)) return below + x - 2 * d
         }
         return -1
     }

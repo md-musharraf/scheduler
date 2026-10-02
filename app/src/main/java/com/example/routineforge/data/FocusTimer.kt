@@ -51,8 +51,6 @@ class FocusTimer(
 
     val active: Flow<FocusSession?> = dao.observeActive()
 
-    /** Subject to resume after a break. */
-    private var lastFocusSubject: Long? = null
 
     /**
      * Every state change runs to the end even if the caller is cancelled: completing a session
@@ -68,7 +66,7 @@ class FocusTimer(
 
     /** Starts [type] with its default length (notification and widget buttons). */
     suspend fun startDefault(type: SessionType) {
-        start(type, if (type == SessionType.FOCUS) lastFocusSubject else null, profiles.get().minutesFor(type) * 60_000L)
+        start(type, if (type == SessionType.FOCUS) dao.lastFocusSubject() else null, profiles.get().minutesFor(type) * 60_000L)
         Notifier.cancel(context, Notifier.ID_TIMER_DONE)
     }
 
@@ -87,7 +85,6 @@ class FocusTimer(
             updatedAt = now
         )
         dao.insert(session)
-        if (type == SessionType.FOCUS) lastFocusSubject = subjectId
         sync(session)
         return session
     }
@@ -157,7 +154,7 @@ class FocusTimer(
         val summary = if (isFocus) today() else null
         Notifier.showTimerDone(context, s.sessionType, s.plannedDurationMs, summary, next, autoStart, profile.soundEnabled, profile.vibrationEnabled)
         _events.tryEmit(TimerEvent.Finished(s.sessionType, if (isFocus) s.plannedDurationMs else 0L, natural = true, next = next, nextStarted = autoStart, summary = summary))
-        if (autoStart) startLocked(next, if (next == SessionType.FOCUS) lastFocusSubject else null, profile.minutesFor(next) * 60_000L)
+        if (autoStart) startLocked(next, if (next == SessionType.FOCUS) dao.lastFocusSubject() else null, profile.minutesFor(next) * 60_000L)
     }
 
     private suspend fun nextAfter(type: SessionType): SessionType {

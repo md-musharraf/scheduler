@@ -58,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -100,7 +101,6 @@ import com.example.routineforge.navigation.SubjectsNav
 import com.example.routineforge.navigation.TimerNav
 import java.time.LocalDate
 import java.time.format.TextStyle
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -215,7 +215,7 @@ private fun Header(ui: HomeUi, greeting: String, onBell: () -> Unit, onProfile: 
         Column(Modifier.weight(1f)) {
             Text(if (ui.name.isBlank()) "$greeting!" else "$greeting,", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (ui.name.isNotBlank()) Text(ui.name, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(TimeFormat.dayYear(ui.today).let { "${ui.today.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())}, $it" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(TimeFormat.dayYear(ui.today).let { "${ui.today.dayOfWeek.getDisplayName(TextStyle.SHORT, LocalConfiguration.current.locales[0])}, $it" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = onBell) {
             BadgedBox(badge = { if (ui.remindersToday > 0) Badge { Text("${ui.remindersToday}") } }) {
@@ -247,7 +247,7 @@ private fun WeekStrip(ui: HomeUi, onSelect: (LocalDate) -> Unit, onShift: (Long)
                     modifier = Modifier.weight(1f).semantics { this.selected = selected; contentDescription = TimeFormat.day(d) + if (isToday) ", today" else "" }
                 ) {
                     Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(d.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        Text(d.dayOfWeek.getDisplayName(TextStyle.SHORT, LocalConfiguration.current.locales[0]), style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         Text(
                             "${d.dayOfMonth}",
                             style = MaterialTheme.typography.titleMedium,

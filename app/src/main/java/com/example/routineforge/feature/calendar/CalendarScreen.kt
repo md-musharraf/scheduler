@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -199,7 +200,7 @@ private fun DayHeader(d: LocalDate, today: LocalDate, onClick: () -> Unit) {
             when (d) {
                 today -> "Today"
                 today.plusDays(1) -> "Tomorrow"
-                else -> d.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
+                else -> d.dayOfWeek.getDisplayName(TextStyle.FULL, LocalConfiguration.current.locales[0])
             },
             style = MaterialTheme.typography.titleSmall,
             color = if (d == today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
