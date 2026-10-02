@@ -1,3 +1,3 @@
-# scheduler
+# FocusFlow
 
-RoutineForge: Category-wise Schedule Tracking with Nested Sub-tasks, Synchronized Dual Parallel Chronograph Countdown Timers, and Interactive Planning Calendar.
+Offline Android focus timer and study planner: Pomodoro-style focus and break sessions with a simulated sand hourglass, stopwatch, subjects, goals, notes, reminders and calendar.

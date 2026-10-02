@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">RoutineForge</string>
+    <string name="app_name">FocusFlow</string>
+    <string name="widget_description">Focus timer and stopwatch with play, pause and stop</string>
 </resources>

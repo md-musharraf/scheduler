@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_bg">#0E1120</color>
+    <color name="live_card_bg">#1C1C1E</color>
+    <color name="live_text">#FFFFFF</color>
+    <color name="live_text_muted">#A8A8AD</color>
+    <color name="live_accent">#2F7BF6</color>
+    <color name="live_btn_secondary">#55555A</color>
+    <color name="live_btn_secondary_icon">#FFFFFF</color>
+    <color name="live_focus">#2E8A64</color>
+    <color name="live_break">#C47A35</color>
+</resources>
